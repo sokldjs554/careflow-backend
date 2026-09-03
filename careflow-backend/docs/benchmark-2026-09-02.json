@@ -1,0 +1,20 @@
+{
+  "environment": "in-process ASGI, SQLite memory, in-memory transcript store",
+  "recorded_at": "2026-09-02",
+  "iterations": 300,
+  "requests": 1500,
+  "failures": 0,
+  "create_ms": {
+    "median": 2.724,
+    "p95": 3.099
+  },
+  "chunk_ms": {
+    "median": 2.541,
+    "p95": 2.954
+  },
+  "finalize_ms": {
+    "median": 4.589,
+    "p95": 5.507
+  },
+  "interpretation": "Regression baseline only; not PostgreSQL, Redis, network, or AWS performance."
+}

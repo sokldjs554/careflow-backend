@@ -1,0 +1,62 @@
+services:
+  api:
+    build: .
+    environment:
+      AUTO_CREATE_SCHEMA: "false"
+      DATABASE_URL: postgresql+asyncpg://careflow:careflow@postgres:5432/careflow
+      REDIS_URL: redis://redis:6379/0
+      TRANSCRIPT_TTL_SECONDS: 1800
+      NOTE_GENERATOR_MODE: ${NOTE_GENERATOR_MODE:-deterministic}
+      ANTHROPIC_BASE_URL: ${ANTHROPIC_BASE_URL:-https://api.anthropic.com}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-5}
+      SPEECH_RECOGNITION_MODE: ${SPEECH_RECOGNITION_MODE:-disabled}
+      WHISPER_MODEL: ${WHISPER_MODEL:-small}
+      WHISPER_DEVICE: ${WHISPER_DEVICE:-cpu}
+      WHISPER_COMPUTE_TYPE: ${WHISPER_COMPUTE_TYPE:-int8}
+      HF_HOME: /home/careflow/.cache/huggingface
+    ports:
+      - "8000:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    volumes:
+      - whisper_cache:/home/careflow/.cache/huggingface
+
+  migrate:
+    build: .
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://careflow:careflow@postgres:5432/careflow
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: careflow
+      POSTGRES_USER: careflow
+      POSTGRES_PASSWORD: careflow
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U careflow"]
+      interval: 3s
+      timeout: 2s
+      retries: 20
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 2s
+      retries: 20
+
+volumes:
+  postgres_data:
+  whisper_cache:

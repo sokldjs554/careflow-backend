@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CareFlow Backend Demo</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #172821; --muted: #64756e; --line: #d8e2dd; --paper: #f5f8f6;
+      --card: #ffffff; --brand: #08735c; --brand-soft: #e7f4ef; --warn-soft: #fff3e7;
+      font-family: Inter, Pretendard, "Noto Sans KR", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--paper); color: var(--ink); }
+    main { width: min(1180px, calc(100% - 36px)); margin: 0 auto; padding: 34px 0 52px; }
+    header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
+    .eyebrow { color: var(--brand); font-size: 12px; font-weight: 800; letter-spacing: .12em; }
+    h1 { font-size: clamp(30px, 4vw, 52px); line-height: 1.08; margin: 12px 0 10px; letter-spacing: -.04em; }
+    .lead { color: var(--muted); max-width: 720px; line-height: 1.65; margin: 0; }
+    .badge { white-space: nowrap; border: 1px solid #b9d8cc; color: var(--brand); background: var(--brand-soft); border-radius: 999px; padding: 9px 13px; font-size: 12px; font-weight: 700; }
+    .notice { border: 1px solid #f0c89f; background: var(--warn-soft); color: #764314; border-radius: 14px; padding: 13px 16px; font-size: 13px; margin-bottom: 18px; }
+    .grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(360px, .95fr); gap: 18px; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 20px; box-shadow: 0 12px 30px rgba(32, 59, 48, .05); overflow: hidden; }
+    .card-head { padding: 20px 22px 16px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .card h2 { font-size: 18px; margin: 0; }
+    .status { font-size: 12px; color: var(--muted); font-weight: 700; }
+    .status strong { color: var(--brand); }
+    .conversation { padding: 18px 22px 8px; min-height: 360px; }
+    .line { display: grid; grid-template-columns: 72px 1fr; gap: 12px; padding: 13px 0; border-bottom: 1px dashed #e5ece8; }
+    .speaker { font-size: 12px; font-weight: 800; color: var(--brand); }
+    .line.clinician .speaker { color: #35629b; }
+    .utterance { font-size: 14px; line-height: 1.55; }
+    .empty { color: var(--muted); font-size: 13px; line-height: 1.7; padding: 20px 0; }
+    .mic-tools { margin: 0 22px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: #f8fbf9; display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+    .mic-tools label { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; font-weight: 800; }
+    select { border: 1px solid var(--line); border-radius: 9px; padding: 9px 28px 9px 10px; background: white; color: var(--ink); font: inherit; }
+    .mic-state { color: var(--muted); font-size: 12px; margin-left: auto; }
+    button.recording { background: #b43b3b; }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; padding: 16px 22px 22px; }
+    button { border: 0; border-radius: 11px; padding: 11px 15px; font-size: 13px; font-weight: 800; cursor: pointer; background: var(--brand); color: white; }
+    button.secondary { background: #ecf0ee; color: var(--ink); }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    .draft { padding: 18px 22px 22px; display: grid; gap: 12px; min-height: 360px; }
+    .section { border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
+    .section-title { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; color: var(--brand); font-size: 12px; font-weight: 900; letter-spacing: .04em; }
+    .section p { min-height: 42px; color: var(--muted); font-size: 13px; line-height: 1.6; margin: 9px 0 0; }
+    .blocked { border-color: #e8c6c6; background: #fff8f8; }
+    .blocked .section-title { color: #a24242; }
+    .events { margin-top: 18px; padding: 16px 18px; border-radius: 16px; background: #11231c; color: #cbe6dc; font: 12px/1.65 ui-monospace, SFMono-Regular, Menlo, monospace; min-height: 108px; white-space: pre-wrap; }
+    footer { margin-top: 18px; color: var(--muted); font-size: 12px; display: flex; justify-content: space-between; gap: 16px; }
+    footer a { color: var(--brand); }
+    @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } header { flex-direction: column; } }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <div class="eyebrow">CAREFLOW · REALTIME BACKEND PROTOTYPE</div>
+      <h1>실시간 기록은 짧게 보관하고,<br>검토 가능한 초안만 남깁니다.</h1>
+      <p class="lead">WebSocket으로 텍스트 또는 마이크 음성을 받고, 로컬 Whisper 전사와 Claude 구조화 요약을 거쳐 S/O/P 초안을 만듭니다. 근거가 부족하면 자동 완료하지 않고 사람 검토로 전환합니다.</p>
+    </div>
+    <div class="badge" id="runtime-badge">런타임 확인 중</div>
+  </header>
+
+  <div class="notice">합성 데이터만 사용하는 독립 포트폴리오 프로토타입입니다. 의료 진단·치료 서비스가 아니며 실제 환자 정보를 입력하면 안 됩니다.</div>
+
+  <section class="grid">
+    <article class="card">
+      <div class="card-head"><h2>합성·마이크 상담 스트림</h2><div class="status">세션 <strong id="session-status">대기</strong></div></div>
+      <div class="conversation" id="conversation">
+        <div class="empty" id="empty-conversation">세션을 만든 뒤 합성 문장을 보내거나, 화자를 선택하고 한 발화를 녹음하세요.</div>
+      </div>
+      <div class="mic-tools">
+        <label>화자
+          <select id="speaker"><option value="patient">환자</option><option value="clinician">의료진</option></select>
+        </label>
+        <button id="record" disabled>마이크 녹음</button>
+        <span class="mic-state" id="mic-status">서버 확인 중</span>
+      </div>
+      <div class="actions">
+        <button id="start">1. 세션 생성</button>
+        <button id="stream" class="secondary" disabled>합성 3문장 전송</button>
+        <button id="finalize" class="secondary" disabled>2. Claude 초안 생성</button>
+        <button id="reset" class="secondary">초기화</button>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card-head"><h2>S/O/P 초안</h2><div class="status">판정 <strong id="review-status">미생성</strong></div></div>
+      <div class="draft">
+        <div class="section"><div class="section-title"><span>S · SUBJECTIVE</span><span id="evidence-s">근거 -</span></div><p id="subjective">세션을 실행하면 초안이 표시됩니다.</p></div>
+        <div class="section"><div class="section-title"><span>O · OBJECTIVE</span><span id="evidence-o">근거 -</span></div><p id="objective">세션을 실행하면 초안이 표시됩니다.</p></div>
+        <div class="section"><div class="section-title"><span>P · PLAN</span><span id="evidence-p">근거 -</span></div><p id="plan">세션을 실행하면 초안이 표시됩니다.</p></div>
+        <div class="section blocked"><div class="section-title"><span>A · ASSESSMENT</span><span>스키마 차단</span></div><p>임상 판단은 자동 생성 범위에서 제외했습니다.</p></div>
+      </div>
+    </article>
+  </section>
+
+  <div id="events" class="events">[ready] 데모를 시작하세요.</div>
+  <footer><span>원문: Redis TTL → 초안 생성 후 삭제 · 감사 로그: 이벤트와 해시만</span><a href="/docs">OpenAPI 문서 열기</a></footer>
+</main>
+
+<script>
+  const sample = [
+    {speaker: "patient", text: "최근 일주일 동안 잠들기 어려웠습니다."},
+    {speaker: "clinician", text: "표정과 말투가 차분한 것을 관찰했습니다."},
+    {speaker: "clinician", text: "다음 주에 수면 상태를 추적할 계획입니다."}
+  ];
+  let sessionId = null;
+  let socket = null;
+  let nextSequence = 1;
+  let speechAvailable = false;
+  let mediaRecorder = null;
+  let mediaStream = null;
+  let audioParts = [];
+  let recordingTimer = null;
+  const $ = (id) => document.getElementById(id);
+  const log = (message) => { $("events").textContent += `\n${message}`; $("events").scrollTop = $("events").scrollHeight; };
+  const waitFor = (connection, expected, timeoutMs = 60000) => new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error("응답 시간 초과")), timeoutMs);
+    const handler = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.type === expected || data.type === "error") {
+        clearTimeout(timeout); connection.removeEventListener("message", handler); resolve(data);
+      }
+    };
+    connection.addEventListener("message", handler);
+  });
+  const ensureSuccess = (data) => {
+    if (data.type === "error") throw new Error(data.code);
+    return data;
+  };
+  const appendConversation = (speaker, text, sequence) => {
+    $("empty-conversation")?.remove();
+    const line = document.createElement("div");
+    line.className = `line ${speaker === "clinician" ? "clinician" : ""}`;
+    const label = speaker === "clinician" ? "의료진" : "환자";
+    const speakerNode = document.createElement("div");
+    speakerNode.className = "speaker";
+    speakerNode.textContent = `${label} · #${sequence}`;
+    const utterance = document.createElement("div");
+    utterance.className = "utterance";
+    utterance.textContent = text;
+    line.append(speakerNode, utterance);
+    $("conversation").append(line);
+  };
+  const stopMediaTracks = () => {
+    if (mediaStream) mediaStream.getTracks().forEach((track) => track.stop());
+    mediaStream = null;
+  };
+
+  async function loadCapabilities() {
+    try {
+      const capabilities = await fetch("/v1/capabilities").then((response) => response.json());
+      speechAvailable = capabilities.speech_enabled;
+      $("runtime-badge").textContent = `${capabilities.note_generator_version} · ${capabilities.speech_recognizer_version || "STT disabled"}`;
+      $("mic-status").textContent = speechAvailable ? "최대 30초 · 원본 미저장" : "STT 서버 설정 필요";
+    } catch (error) {
+      $("runtime-badge").textContent = "런타임 확인 실패";
+      $("mic-status").textContent = "서버 상태를 확인하세요";
+      log(`[capabilities.error] ${error.message}`);
+    }
+  }
+  loadCapabilities();
+
+  $("start").onclick = async () => {
+    const response = await fetch("/v1/sessions", {
+      method: "POST", headers: {"Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID()},
+      body: JSON.stringify({language: "ko"})
+    });
+    const data = await response.json();
+    sessionId = data.session_id;
+    const protocol = location.protocol === "https:" ? "wss" : "ws";
+    socket = new WebSocket(`${protocol}://${location.host}${data.websocket_path}`);
+    await new Promise((resolve) => socket.addEventListener("open", resolve, {once: true}));
+    $("session-status").textContent = "created";
+    $("stream").disabled = false;
+    $("record").disabled = !speechAvailable || !navigator.mediaDevices || !window.MediaRecorder;
+    $("start").disabled = true;
+    log(`[session.created] ${sessionId}`);
+  };
+
+  $("stream").onclick = async () => {
+    try {
+      $("stream").disabled = true;
+      $("record").disabled = true;
+      for (const item of sample) {
+        const chunk = {type: "transcript.chunk", sequence: nextSequence, ...item};
+        const pending = waitFor(socket, "transcript.ack");
+        socket.send(JSON.stringify(chunk));
+        const ack = ensureSuccess(await pending);
+        appendConversation(item.speaker, item.text, nextSequence);
+        log(`[transcript.ack] sequence=${ack.sequence} duplicate=${ack.duplicate}`);
+        nextSequence += 1;
+      }
+      $("session-status").textContent = "streaming";
+      $("finalize").disabled = false;
+    } catch (error) {
+      $("stream").disabled = false;
+      log(`[error] ${error.message}`);
+    } finally {
+      $("record").disabled = !speechAvailable;
+    }
+  };
+
+  $("record").onclick = async () => {
+    if (mediaRecorder?.state === "recording") {
+      clearTimeout(recordingTimer);
+      mediaRecorder.stop();
+      return;
+    }
+    try {
+      mediaStream = await navigator.mediaDevices.getUserMedia({audio: true});
+      const candidates = ["audio/webm;codecs=opus", "audio/mp4", "audio/ogg;codecs=opus"];
+      const selected = candidates.find((type) => MediaRecorder.isTypeSupported(type));
+      mediaRecorder = new MediaRecorder(mediaStream, selected ? {mimeType: selected} : undefined);
+      audioParts = [];
+      mediaRecorder.ondataavailable = (event) => { if (event.data.size) audioParts.push(event.data); };
+      mediaRecorder.onstop = sendRecordedAudio;
+      mediaRecorder.start();
+      $("stream").disabled = true;
+      $("finalize").disabled = true;
+      $("record").textContent = "녹음 종료";
+      $("record").classList.add("recording");
+      $("mic-status").textContent = "녹음 중 · 최대 30초";
+      recordingTimer = setTimeout(() => mediaRecorder?.state === "recording" && mediaRecorder.stop(), 30000);
+    } catch (error) {
+      stopMediaTracks();
+      log(`[microphone.error] ${error.message}`);
+    }
+  };
+
+  async function sendRecordedAudio() {
+    clearTimeout(recordingTimer);
+    $("record").disabled = true;
+    $("record").classList.remove("recording");
+    $("record").textContent = "마이크 녹음";
+    $("mic-status").textContent = "Whisper 인식 중";
+    try {
+      const blob = new Blob(audioParts, {type: mediaRecorder.mimeType});
+      const contentType = (blob.type || "audio/webm").split(";")[0];
+      const metadata = {
+        type: "audio.start", sequence: nextSequence,
+        speaker: $("speaker").value, content_type: contentType
+      };
+      const readyPromise = waitFor(socket, "audio.ready", 10000);
+      socket.send(JSON.stringify(metadata));
+      ensureSuccess(await readyPromise);
+      const resultPromise = waitFor(socket, "transcript.recognized", 180000);
+      socket.send(await blob.arrayBuffer());
+      const result = ensureSuccess(await resultPromise);
+      appendConversation(result.speaker, result.text, result.sequence);
+      log(`[transcript.recognized] sequence=${result.sequence} duration=${result.duration_seconds}s raw_audio_persisted=${result.raw_audio_persisted}`);
+      nextSequence += 1;
+      $("session-status").textContent = "streaming";
+      $("finalize").disabled = false;
+      $("mic-status").textContent = "인식 완료 · 원본 미저장";
+    } catch (error) {
+      $("mic-status").textContent = "인식 실패 · 재시도 가능";
+      log(`[speech.error] ${error.message}`);
+    } finally {
+      audioParts = [];
+      stopMediaTracks();
+      $("record").disabled = false;
+      $("stream").disabled = false;
+      $("finalize").disabled = nextSequence === 1;
+    }
+  }
+
+  $("finalize").onclick = async () => {
+    try {
+      $("finalize").disabled = true;
+      $("record").disabled = true;
+      const pending = waitFor(socket, "session.finalized", 180000);
+      socket.send(JSON.stringify({type: "session.finalize"}));
+      const result = ensureSuccess(await pending);
+      log(`[session.finalized] status=${result.status} transcript_purged=${result.transcript_purged}`);
+      const draft = await fetch(`/v1/sessions/${sessionId}/draft`).then((response) => response.json());
+      for (const field of ["subjective", "objective", "plan"]) $(field).textContent = draft[field];
+      for (const suffix of ["s", "o", "p"]) $(`evidence-${suffix}`).textContent = "근거 -";
+      for (const item of draft.evidence) {
+        const suffix = item.section === "subjective" ? "s" : item.section === "objective" ? "o" : "p";
+        $(`evidence-${suffix}`).textContent = `근거 #${item.source_sequences.join(", #")}`;
+      }
+      $("review-status").textContent = draft.review_required ? "사람 검토" : "계약 통과";
+      $("session-status").textContent = result.status;
+      $("stream").disabled = true;
+      log(`[draft.created] generator=${draft.generator_version} reasons=${draft.review_reasons.join(",") || "none"}`);
+    } catch (error) {
+      $("finalize").disabled = false;
+      $("record").disabled = !speechAvailable;
+      log(`[finalize.error] ${error.message}`);
+    }
+  };
+
+  $("reset").onclick = () => location.reload();
+</script>
+</body>
+</html>
