@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Unit, lint, type, migration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: true
+      - name: Install Python and dependencies
+        run: |
+          uv python install 3.12
+          uv sync --locked --extra dev
+      - name: Lint
+        run: uv run ruff check .
+      - name: Type check
+        run: uv run mypy app
+      - name: Unit and contract tests
+        run: uv run pytest -m "not integration"
+      - name: Clean SQLite migration
+        env:
+          DATABASE_URL: sqlite+aiosqlite:///./ci-migration.db
+        run: uv run alembic upgrade head
+
+  services:
+    name: PostgreSQL 16 and Redis 7
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: careflow
+          POSTGRES_USER: careflow
+          POSTGRES_PASSWORD: careflow
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U careflow"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: true
+      - name: Install Python and dependencies
+        run: |
+          uv python install 3.12
+          uv sync --locked --extra dev
+      - name: Apply migration to PostgreSQL
+        env:
+          DATABASE_URL: postgresql+asyncpg://careflow:careflow@localhost:5432/careflow
+        run: uv run alembic upgrade head
+      - name: Run real-service integration test
+        env:
+          INTEGRATION_DATABASE_URL: postgresql+asyncpg://careflow:careflow@localhost:5432/careflow
+          INTEGRATION_REDIS_URL: redis://localhost:6379/0
+        run: uv run pytest -m integration
+
+  container:
+    name: Docker image build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build runtime image
+        run: docker build --tag careflow-backend:ci .

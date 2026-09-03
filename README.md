@@ -8,11 +8,11 @@
 
 | 영역 | 구현 상태 | 검증 경계 |
 | --- | --- | --- |
-| 대화 이해·요약 | Anthropic 네이티브 Messages API와 JSON Schema 구조화 출력 | 모의 API 계약 테스트 완료; 실제 호출은 개인 API 키 설정 후 가능 |
-| 음성 인식 | 브라우저 MediaRecorder → WebSocket binary → 로컬 `faster-whisper` | 패키지 로드와 영어 합성 음성 실제 추론 완료; 한국어 마이크 정확도 평가는 별도 필요 |
-| 실시간 수신 | 텍스트와 발화 단위 음성을 동일 WebSocket 세션으로 수신 | 순번 중복·크기·길이·상태 오류 테스트 완료 |
+| 대화 이해·요약 | Anthropic 네이티브 Messages API와 JSON Schema 구조화 출력 | 합성 대화 1건 실제 Claude 호출 및 계약 검증 성공; 일반화된 품질 평가는 아님 |
+| 음성 인식 | 브라우저 MediaRecorder → WebSocket binary → 로컬 `faster-whisper` | 한국어 합성 TTS 3건, 공백·문장부호 정규화 CER 1/70(1.43%); 실제 마이크·소음 평가는 별도 필요 |
+| 실시간 수신 | 텍스트와 발화 단위 음성을 동일 WebSocket 세션으로 수신 | Codespaces에서 텍스트 3개 WebSocket 수신 → 실제 Claude 초안 → 원문 삭제 확인 |
 | 데이터 수명주기 | 원문 텍스트 Redis TTL, 음성 비저장, 성공 후 원문 삭제 | 인메모리·fakeredis 계약 테스트 완료 |
-| 영속화 | PostgreSQL + async SQLAlchemy + Alembic | 로컬 테스트는 SQLite 어댑터 사용 |
+| 영속화 | PostgreSQL + async SQLAlchemy + Alembic | SQLite 마이그레이션 확인; PostgreSQL·Redis 통합 CI 포함 |
 | AWS | ECS·ALB·RDS·ElastiCache Terraform 시작점 | 실제 계정에는 배포하지 않음 |
 
 규칙 기반 생성기는 AI 기능을 대신하지 않습니다. 테스트 재현성과 장애 격리를 위한 `deterministic` 기준선으로만 남겨 두었고, 완전한 데모는 `NOTE_GENERATOR_MODE=anthropic`으로 실행합니다.
@@ -27,9 +27,11 @@ flowchart TD
     D --> E["Claude S/O/P 구조화 요약"]
     E --> F{"근거·안전 계약"}
     F -->|"통과"| G["PostgreSQL 초안"]
-    F -->|"실패"| H["사람 검토"]
+    F -->|"근거·안전 검토"| H["사람 검토 초안"]
+    E -->|"API·스키마 실패"| J["재시도 가능 초안"]
     G --> I["원문 삭제"]
     H --> I
+    J --> K["원문 TTL 유지"]
 ```
 
 브라우저는 녹음이 끝난 한 발화를 보내며, 서버는 전사가 끝나는 즉시 텍스트를 돌려줍니다. 연속 음성의 부분 자막을 생성하는 스트리밍 ASR이라고 주장하지 않고, **발화 단위 준실시간 방식**으로 범위를 명시했습니다.
@@ -98,6 +100,18 @@ PostgreSQL·Redis까지 포함하려면 `.env` 설정 후 다음을 실행합니
 docker compose up --build
 ```
 
+## GitHub Codespaces
+
+저장소 루트에서 Codespace를 만들면 dev container가 Python 3.12와 `uv` 의존성을 자동으로 준비하고 8000번 포트를 전달합니다. 개인 키는 저장소 파일이 아니라 **Codespaces secret** `ANTHROPIC_API_KEY`로만 설정합니다.
+
+```bash
+make verify
+make live-claude
+make run-live
+```
+
+처음 `make run-live`를 실행하면 Whisper `small` 모델 다운로드 때문에 시간이 더 걸릴 수 있습니다. 자세한 순서는 [`docs/codespaces.md`](docs/codespaces.md)에 정리했습니다.
+
 ## 실호출 점검
 
 Claude 구조화 요약 한 건:
@@ -158,16 +172,19 @@ uv run python scripts/benchmark.py
 | mypy | 15개 소스 파일, 오류 0 |
 | faster-whisper 의존성 | 1.2.1 import 성공 |
 | 실제 STT 스모크 | 영어 합성 음성 2.065초 → 기대 문장 일치 |
-| Claude 실호출 | API 키 미설정으로 미실행; 모의 HTTP 계약 검증 완료 |
-| 인프로세스 벤치마크 | 300세션·1,500요청·실패 0; finalize p95 11.647ms |
+| 한국어 STT 소표본 | 합성 TTS 3건, 정규화 문자 70개 중 대치 1개 → CER 1.43% |
+| Claude 실호출 | 합성 대화 1건에서 S/O/P·근거 sequence 계약 통과 |
+| Codespaces 경로 | WebSocket 텍스트 3건 → 실제 Claude → `ready`·`transcript_purged=true` 확인 |
+| 인프로세스 벤치마크 | 300세션·1,500요청·실패 0; finalize p95 6.029ms |
 
-인프로세스 벤치마크는 실제 Postgres·Redis·네트워크·Claude·Whisper 성능이 아닙니다. [검증 기록](docs/verification.md)과 [벤치마크 원본](docs/benchmark-2026-09-03.json)에 실행 경계를 함께 남겼습니다.
+인프로세스 벤치마크는 실제 Postgres·Redis·네트워크·Claude·Whisper 성능이 아닙니다. [실검증 기록](docs/live-validation-2026-09-03.md), [전체 검증 기록](docs/verification.md), [벤치마크 원본](docs/benchmark-2026-09-03.json)에 실행 경계를 함께 남겼습니다.
 
 ## 정직한 한계
 
 - 실제 환자 데이터, 의료진 평가, 임상 정확도 검증을 사용하지 않았습니다.
-- 한국어 STT의 WER/CER과 실제 상담 환경의 소음·겹침 발화는 아직 측정하지 않았습니다.
-- Claude 실호출 결과와 비용·지연은 사용자의 로컬 키로 확인해야 합니다.
+- 한국어 CER 1.43%는 깨끗한 합성 TTS 3건만의 결과입니다. 실제 마이크·억양·소음·겹침 발화 정확도는 아직 측정하지 않았습니다.
+- Claude 실호출은 합성 대화 1건의 계약 확인입니다. 다양한 대화의 요약 품질·지연·토큰 비용은 아직 벤치마크하지 않았습니다.
+- Codespaces의 텍스트 WebSocket 전체 경로는 확인했지만 브라우저 마이크 → Whisper → Claude 전체 경로는 아직 확인하지 않았습니다.
 - 발화 단위 준실시간 전사이며, 연속 스트리밍 부분 자막은 구현하지 않았습니다.
 - 외부 Claude API에 실제 의료정보를 보내려면 별도의 계약·동의·보안·규제 검토가 필요합니다.
 - 인증·권한·다중 테넌시·KMS·비밀 회전은 포트폴리오 범위 밖입니다.

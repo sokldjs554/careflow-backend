@@ -40,6 +40,9 @@ packages = ["app"]
 testpaths = ["tests"]
 addopts = "-q"
 asyncio_mode = "auto"
+markers = [
+  "integration: requires real PostgreSQL and Redis endpoints",
+]
 
 [tool.ruff]
 target-version = "py311"

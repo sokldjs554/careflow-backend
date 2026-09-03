@@ -1,5 +1,6 @@
 import asyncio
 import json
+import time
 
 from app.config import Settings
 from app.services.note_generator import AnthropicClaudeNoteGenerator
@@ -24,17 +25,27 @@ async def main() -> None:
         max_tokens=settings.anthropic_max_tokens,
         timeout_seconds=settings.llm_timeout_seconds,
     )
+    started = time.perf_counter()
     draft = await generator.generate(
         [
             TranscriptChunk(1, "patient", "최근 일주일 동안 잠드는 데 한 시간쯤 걸렸습니다."),
             TranscriptChunk(2, "patient", "아침에 피곤해서 업무에 집중하기 어려웠습니다."),
-            TranscriptChunk(3, "clinician", "대화 중 말투와 호흡은 차분하게 관찰되었습니다."),
+            TranscriptChunk(
+                3,
+                "clinician",
+                "대화 중 환자의 말투와 호흡은 차분하게 관찰되었습니다.",
+            ),
             TranscriptChunk(4, "clinician", "다음 주에 수면 기록을 함께 확인할 계획입니다."),
         ]
     )
+    latency_ms = (time.perf_counter() - started) * 1000
     print(
         json.dumps(
-            {"generator_version": generator.version, **draft.model_dump()},
+            {
+                "generator_version": generator.version,
+                "latency_ms": round(latency_ms, 3),
+                **draft.model_dump(),
+            },
             ensure_ascii=False,
             indent=2,
         )

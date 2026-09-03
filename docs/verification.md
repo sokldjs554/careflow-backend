@@ -10,7 +10,8 @@
 | JavaScript syntax check | Success |
 | `faster-whisper`, PyAV, CTranslate2 import | 1.2.1 / 18.1.0 / 4.8.2 |
 | `alembic upgrade head` | 새 SQLite DB에 initial migration 성공 |
-| Docker image build | 이 실행환경에 Docker CLI가 없어 미실행 |
+| PostgreSQL·Redis 통합 | GitHub Actions service-container 검증 추가; CI 결과 확인 전 |
+| Docker image build | GitHub Actions 검증 추가; CI 결과 확인 전 |
 
 ## 실제 STT 스모크
 
@@ -24,11 +25,13 @@ SpeechRecognitionResult(
 )
 ```
 
-이 검증은 PyAV 디코딩, CTranslate2 모델 로드, Whisper 추론, 결과 변환 경로가 실제로 동작함을 확인합니다. 한국어 상담 정확도나 `small` 모델의 성능을 입증하지는 않습니다. 한국어 비식별 음성 세트로 WER/CER, 소음, 억양, 겹침 발화를 별도 측정해야 합니다.
+추가로 한국어 합성 TTS 3건을 `small`, CPU int8로 처리했고 공백·문장부호 정규화 CER 1/70(1.43%)을 확인했습니다. 이는 깨끗한 합성 소표본의 스모크이며, 실제 마이크·소음·억양·겹침 발화 정확도를 입증하지 않습니다. 자세한 입력과 결과는 [`live-validation-2026-09-03.md`](live-validation-2026-09-03.md)에 남겼습니다.
 
 ## Claude 검증
 
-실제 `ANTHROPIC_API_KEY`가 이 환경에 없으므로 과금되는 실호출은 수행하지 않았습니다. 대신 `httpx.MockTransport`로 다음 계약을 검증했습니다.
+Codespaces secret으로 개인 `ANTHROPIC_API_KEY`를 주입하고 합성 대화 1건을 실제 호출했습니다. S/O/P와 세 section의 근거 sequence가 모두 반환됐고, 입력에 없던 진단·검사·약물·치료는 추가되지 않았습니다. 단일 사례이며 당시 지연·토큰 비용은 기록하지 않았습니다.
+
+별도로 `httpx.MockTransport`로 다음 오류·경계 계약을 반복 검증합니다.
 
 - 네이티브 `POST /v1/messages`
 - `x-api-key`, `anthropic-version` 헤더
@@ -41,7 +44,11 @@ SpeechRecognitionResult(
 - 오류 메시지에서 API 키 비노출
 - 빈 API 키 fail-fast
 
-실제 문맥 요약 품질·지연·토큰 비용은 `scripts/live_claude_check.py`를 개인 키와 합성 데이터로 실행한 뒤 기록해야 합니다.
+다양한 문맥의 요약 품질·지연·토큰 비용 평가는 추가 검증 대상입니다. 이후 `scripts/live_claude_check.py`는 `latency_ms`도 출력합니다.
+
+## Codespaces 경로 검증
+
+텍스트 발화 3건을 브라우저에서 WebSocket으로 보낸 뒤 실제 Claude로 finalize했습니다. `status=ready`, `reasons=none`, `transcript_purged=true`를 확인했습니다. 브라우저 마이크 → Whisper → Claude 전체 음성 경로는 아직 검증하지 않았습니다.
 
 ## 회귀 동작 범위
 
@@ -65,8 +72,8 @@ SpeechRecognitionResult(
 
 | 구간 | median | p95 |
 | --- | ---: | ---: |
-| 세션 생성 | 3.991ms | 6.935ms |
-| 발화 저장 | 3.771ms | 6.770ms |
-| 초안 종료 처리 | 6.895ms | 11.647ms |
+| 세션 생성 | 3.018ms | 3.935ms |
+| 발화 저장 | 2.741ms | 3.507ms |
+| 초안 종료 처리 | 5.188ms | 6.029ms |
 
 300세션·1,500요청에서 실패는 0건이었습니다. 원본은 [`benchmark-2026-09-03.json`](benchmark-2026-09-03.json)에 보존했습니다.
