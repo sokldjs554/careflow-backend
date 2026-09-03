@@ -56,3 +56,15 @@ Codespaces secret으로 개인 API 키를 주입하고 `scripts/live_claude_chec
 공백과 문장부호를 제거한 뒤 한글 숫자 `한`과 숫자 `1`의 대치 1건을 오류로 계산했습니다. 정규화된 70자 기준 CER은 `1 / 70 = 1.43%`입니다.
 
 이 수치는 합성 TTS 3건의 재현성 스모크일 뿐 실제 상담 STT 정확도 지표가 아닙니다. 실제 마이크, 화자별 억양, 배경 소음, 겹침 발화는 별도 검증 대상으로 남겨 둡니다.
+
+## 4. GitHub Actions 실제 서비스·컨테이너 검증
+
+`main` commit `cec2be0`에서 CI #3을 수동 실행했고 전체 workflow가 39초 만에 성공했습니다.
+
+| job | 결과 | 실행 시간 |
+| --- | --- | ---: |
+| Unit, lint, type, migration | 성공 | 21초 |
+| PostgreSQL 16 and Redis 7 | 성공 | 32초 |
+| Docker image build | 성공 | 32초 |
+
+서비스 job은 PostgreSQL 16에 Alembic migration을 적용하고 실제 Redis 7에서 ping·순서·중복·삭제 계약을 확인합니다. 컨테이너 job은 runtime Docker image가 끝까지 빌드되는지 확인합니다. 병렬 CI 성공은 운영 부하, 장시간 WebSocket, Docker Compose 전체 기동, AWS 배포를 입증하지 않습니다.

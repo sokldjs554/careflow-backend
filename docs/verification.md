@@ -10,8 +10,10 @@
 | JavaScript syntax check | Success |
 | `faster-whisper`, PyAV, CTranslate2 import | 1.2.1 / 18.1.0 / 4.8.2 |
 | `alembic upgrade head` | 새 SQLite DB에 initial migration 성공 |
-| PostgreSQL·Redis 통합 | GitHub Actions service-container 검증 추가; CI 결과 확인 전 |
-| Docker image build | GitHub Actions 검증 추가; CI 결과 확인 전 |
+| PostgreSQL 16·Redis 7 통합 | GitHub Actions CI #3 service-container test 성공, 32초 |
+| Docker image build | GitHub Actions CI #3 runtime image build 성공, 32초 |
+
+CI #3은 `main`의 commit `cec2be0`에서 `workflow_dispatch`로 실행했고, 3개 job이 모두 성공했습니다. 단위·lint·type·migration job은 21초, 전체 workflow는 병렬 실행 기준 39초였습니다. 이는 서비스 연결·마이그레이션·Redis 계약과 이미지 빌드의 재현성을 확인한 것이며 운영 부하나 AWS 배포 검증은 아닙니다.
 
 ## 실제 STT 스모크
 

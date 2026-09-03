@@ -28,6 +28,7 @@ uv run python scripts/benchmark.py
 
 - [x] 로컬에서 모든 명령의 종료 코드가 0인지 확인한다.
 - [x] 테스트 수와 벤치마크 수치를 README·포트폴리오와 다시 대조한다.
+- [x] GitHub Actions CI #3에서 PostgreSQL 16·Redis 7 통합과 Docker image build를 포함한 3개 job이 모두 성공했는지 확인한다.
 - [ ] Docker가 있는 로컬 환경에서 `docker compose config`와 `docker compose build`를 실행한다.
 
 ## 3. 비밀·개인 데이터 검사
@@ -57,6 +58,7 @@ git diff --cached
 ## 5. 공개 후 제출
 
 - [ ] 깨끗한 새 저장소에서 README 명령을 한 번 더 재현한다.
-- [ ] GitHub Actions가 모두 통과한 뒤 이력서의 저장소 링크를 활성화한다.
+- [x] 비공개 `main`에서 GitHub Actions 3개 job이 모두 통과했는지 확인한다.
+- [ ] 저장소 공개 후 외부에서 README 링크와 CI 상태를 다시 확인한다.
 - [ ] 60-90초 데모 GIF 또는 영상에는 합성 데이터만 보이게 한다.
 - [ ] 지원 PDF 링크와 GitHub README의 수치·한계가 서로 같은지 확인한다.

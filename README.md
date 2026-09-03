@@ -12,7 +12,8 @@
 | 음성 인식 | 브라우저 MediaRecorder → WebSocket binary → 로컬 `faster-whisper` | 한국어 합성 TTS 3건, 공백·문장부호 정규화 CER 1/70(1.43%); 실제 마이크·소음 평가는 별도 필요 |
 | 실시간 수신 | 텍스트와 발화 단위 음성을 동일 WebSocket 세션으로 수신 | Codespaces에서 텍스트 3개 WebSocket 수신 → 실제 Claude 초안 → 원문 삭제 확인 |
 | 데이터 수명주기 | 원문 텍스트 Redis TTL, 음성 비저장, 성공 후 원문 삭제 | 인메모리·fakeredis 계약 테스트 완료 |
-| 영속화 | PostgreSQL + async SQLAlchemy + Alembic | SQLite 마이그레이션 확인; PostgreSQL·Redis 통합 CI 포함 |
+| 영속화 | PostgreSQL + async SQLAlchemy + Alembic | CI #3에서 PostgreSQL 16 마이그레이션과 Redis 7 실제 계약 테스트 통과 |
+| CI·컨테이너 | 단위·정적·서비스 통합·Docker 빌드 | GitHub Actions CI #3의 3개 job 모두 성공, 총 39초; 실제 배포는 아님 |
 | AWS | ECS·ALB·RDS·ElastiCache Terraform 시작점 | 실제 계정에는 배포하지 않음 |
 
 규칙 기반 생성기는 AI 기능을 대신하지 않습니다. 테스트 재현성과 장애 격리를 위한 `deterministic` 기준선으로만 남겨 두었고, 완전한 데모는 `NOTE_GENERATOR_MODE=anthropic`으로 실행합니다.
@@ -175,6 +176,7 @@ uv run python scripts/benchmark.py
 | 한국어 STT 소표본 | 합성 TTS 3건, 정규화 문자 70개 중 대치 1개 → CER 1.43% |
 | Claude 실호출 | 합성 대화 1건에서 S/O/P·근거 sequence 계약 통과 |
 | Codespaces 경로 | WebSocket 텍스트 3건 → 실제 Claude → `ready`·`transcript_purged=true` 확인 |
+| GitHub Actions CI #3 | 단위·lint·type·SQLite migration, PostgreSQL 16·Redis 7 통합, Docker image build 모두 성공; 총 39초 |
 | 인프로세스 벤치마크 | 300세션·1,500요청·실패 0; finalize p95 6.029ms |
 
 인프로세스 벤치마크는 실제 Postgres·Redis·네트워크·Claude·Whisper 성능이 아닙니다. [실검증 기록](docs/live-validation-2026-09-03.md), [전체 검증 기록](docs/verification.md), [벤치마크 원본](docs/benchmark-2026-09-03.json)에 실행 경계를 함께 남겼습니다.
