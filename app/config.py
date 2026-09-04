@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     anthropic_model: str = "claude-sonnet-5"
     anthropic_version: str = "2023-06-01"
     anthropic_max_tokens: int = Field(default=1600, ge=256, le=8192)
-    llm_timeout_seconds: float = Field(default=20.0, ge=1.0, le=120.0)
+    llm_timeout_seconds: float = Field(default=60.0, ge=1.0, le=120.0)
     speech_recognition_mode: Literal["disabled", "faster_whisper"] = "disabled"
     whisper_model: str = "small"
     whisper_device: str = "cpu"
