@@ -1,4 +1,4 @@
-.PHONY: sync test lint typecheck verify benchmark live-claude run run-live ai-sync ai-test ai-verify rag-bench multimodal-bench eval-bench training-data sft dpo
+.PHONY: sync test lint typecheck verify benchmark live-claude judge-live run run-live ai-sync ai-test ai-verify rag-bench multimodal-bench eval-bench training-data sft dpo
 
 sync:
 	uv sync --locked --extra dev --extra speech
@@ -19,6 +19,9 @@ benchmark:
 
 live-claude:
 	LLM_TIMEOUT_SECONDS=60 uv run python scripts/live_claude_check.py
+
+judge-live:
+	uv run python scripts/live_ai_judge.py
 
 run:
 	uv run uvicorn app.main:app --host 0.0.0.0 --reload --port 8000
