@@ -4,21 +4,30 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.config import Settings
 from app.database import Database
 from app.models import AuditEvent, IdempotencyRecord, NoteDraft, SessionRecord, SessionStatus
 from app.schemas import (
+    AuditEventResponse,
     ChunkAck,
     CreateSessionRequest,
     EvidenceSpan,
     FinalizeResponse,
     NoteDraftResponse,
+    OperationsResponse,
     PurgeResponse,
+    ReviewAction,
+    ReviewDraftRequest,
+    ReviewDraftResponse,
     ReviewReason,
     SessionResponse,
+    SessionSummaryResponse,
+    Speaker,
     TranscriptChunkInput,
+    TranscriptChunkResponse,
+    TranscriptResponse,
 )
 from app.services.note_generator import DraftGenerationError, NoteGenerator
 from app.services.safety import evaluate_for_review
@@ -88,12 +97,69 @@ class SessionService:
             await db.commit()
             return self._session_response(record)
 
+    async def list_sessions(self, limit: int = 50) -> list[SessionSummaryResponse]:
+        async with self.database.session() as db:
+            records = list(
+                (
+                    await db.scalars(
+                        select(SessionRecord)
+                        .order_by(SessionRecord.created_at.desc())
+                        .limit(limit)
+                    )
+                ).all()
+            )
+            items: list[SessionSummaryResponse] = []
+            for record in records:
+                note = await db.scalar(
+                    select(NoteDraft).where(NoteDraft.session_id == record.id)
+                )
+                reasons = self._decode_reasons(note.review_reasons_json if note else "[]")
+                items.append(
+                    SessionSummaryResponse(
+                        session_id=record.id,
+                        status=SessionStatus(record.status),
+                        language=record.language,
+                        created_at=record.created_at,
+                        updated_at=record.updated_at,
+                        expires_at=record.expires_at,
+                        has_draft=note is not None,
+                        review_required=bool(reasons),
+                        review_reasons=reasons,
+                        generator_version=note.generator_version if note else None,
+                    )
+                )
+            return items
+
     async def get_session(self, session_id: str) -> SessionResponse:
         async with self.database.session() as db:
             record = await db.get(SessionRecord, session_id)
             if record is None:
                 raise SessionNotFoundError(session_id)
             return self._session_response(record)
+
+    async def get_transcript(self, session_id: str) -> TranscriptResponse:
+        async with self.database.session() as db:
+            record = await db.get(SessionRecord, session_id)
+            if record is None:
+                raise SessionNotFoundError(session_id)
+            status = SessionStatus(record.status)
+            expires_at = record.expires_at
+
+        chunks = await self.transcript_store.list_chunks(session_id)
+        return TranscriptResponse(
+            session_id=session_id,
+            status=status,
+            expires_at=expires_at,
+            transcript_available=bool(chunks),
+            chunks=[
+                TranscriptChunkResponse(
+                    sequence=chunk.sequence,
+                    speaker=Speaker(chunk.speaker),
+                    text=chunk.text,
+                )
+                for chunk in chunks
+            ],
+        )
 
     async def append_chunk(self, session_id: str, item: TranscriptChunkInput) -> ChunkAck:
         if len(item.text) > self.settings.max_chunk_chars:
@@ -201,7 +267,10 @@ class SessionService:
             )
             reasons = [ReviewReason.GENERATION_FAILURE]
 
-        purge_after_finalize = ReviewReason.GENERATION_FAILURE not in reasons
+        # A review queue is not useful if its evidence disappears first. Successful
+        # no-review drafts are purged immediately; review-required drafts keep source
+        # text only for the configured TTL and purge it on reviewer approval.
+        purge_after_finalize = not reasons
         purged = await self.transcript_store.purge(session_id) if purge_after_finalize else False
         now = datetime.now(UTC)
         status = SessionStatus.REVIEW_REQUIRED if reasons else SessionStatus.READY
@@ -263,6 +332,128 @@ class SessionService:
                 generator_version=note.generator_version,
                 generated_at=note.generated_at,
             )
+
+    async def review_draft(
+        self, session_id: str, request: ReviewDraftRequest
+    ) -> ReviewDraftResponse:
+        now = datetime.now(UTC)
+        async with self.database.session() as db:
+            record = await db.get(SessionRecord, session_id)
+            if record is None:
+                raise SessionNotFoundError(session_id)
+            if record.status == SessionStatus.PURGED.value:
+                raise SessionStateError("Session has been purged")
+            if record.status == SessionStatus.PROCESSING.value:
+                raise SessionStateError("Session is still processing")
+
+            note = await db.scalar(select(NoteDraft).where(NoteDraft.session_id == session_id))
+            if note is None:
+                raise SessionStateError("Draft is not available")
+
+            note.subjective = request.subjective.strip()
+            note.objective = request.objective.strip()
+            note.plan = request.plan.strip()
+            reasons = self._decode_reasons(note.review_reasons_json)
+
+            if request.action == ReviewAction.APPROVE:
+                reasons = []
+                note.review_reasons_json = "[]"
+                record.status = SessionStatus.READY.value
+                event_type = "note.review_approved"
+            else:
+                event_type = "note.review_saved"
+
+            record.updated_at = now
+            self._audit(
+                db,
+                session_id,
+                event_type,
+                self._hash_json(
+                    {
+                        "action": request.action.value,
+                        "subjective": note.subjective,
+                        "objective": note.objective,
+                        "plan": note.plan,
+                    }
+                ),
+            )
+            await db.commit()
+            status = SessionStatus(record.status)
+
+        if request.action == ReviewAction.APPROVE:
+            await self.transcript_store.purge(session_id)
+            async with self.database.session() as db:
+                self._audit(
+                    db,
+                    session_id,
+                    "transcript.purged_after_review",
+                    self._hash_json({"ok": True}),
+                )
+                await db.commit()
+
+        remaining = await self.transcript_store.list_chunks(session_id)
+        return ReviewDraftResponse(
+            session_id=session_id,
+            status=status,
+            review_required=bool(reasons),
+            review_reasons=reasons,
+            transcript_purged=not remaining,
+            updated_at=now,
+        )
+
+    async def list_audit_events(
+        self, session_id: str, limit: int = 50
+    ) -> list[AuditEventResponse]:
+        async with self.database.session() as db:
+            record = await db.get(SessionRecord, session_id)
+            if record is None:
+                raise SessionNotFoundError(session_id)
+            events = list(
+                (
+                    await db.scalars(
+                        select(AuditEvent)
+                        .where(AuditEvent.session_id == session_id)
+                        .order_by(AuditEvent.created_at.desc())
+                        .limit(limit)
+                    )
+                ).all()
+            )
+            return [
+                AuditEventResponse(event_type=event.event_type, created_at=event.created_at)
+                for event in events
+            ]
+
+    async def operations(self, speech_recognizer_version: str | None) -> OperationsResponse:
+        counts: dict[str, int] = {}
+        database_ready = True
+        try:
+            async with self.database.session() as db:
+                rows = (
+                    await db.execute(
+                        select(SessionRecord.status, func.count(SessionRecord.id)).group_by(
+                            SessionRecord.status
+                        )
+                    )
+                ).all()
+                counts = {str(status): int(count) for status, count in rows}
+        except Exception:
+            database_ready = False
+
+        try:
+            transcript_store_ready = await self.transcript_store.ping()
+        except Exception:
+            transcript_store_ready = False
+
+        return OperationsResponse(
+            database_ready=database_ready,
+            transcript_store_ready=transcript_store_ready,
+            session_counts=counts,
+            total_sessions=sum(counts.values()),
+            review_queue=counts.get(SessionStatus.REVIEW_REQUIRED.value, 0),
+            transcript_ttl_seconds=self.settings.transcript_ttl_seconds,
+            note_generator_version=self.note_generator.version,
+            speech_recognizer_version=speech_recognizer_version,
+        )
 
     async def purge(self, session_id: str) -> PurgeResponse:
         transcript_purged = await self.transcript_store.purge(session_id)

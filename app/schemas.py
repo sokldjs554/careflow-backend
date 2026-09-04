@@ -25,6 +25,11 @@ class ReviewReason(StrEnum):
     SCHEMA_VIOLATION = "schema_violation"
 
 
+class ReviewAction(StrEnum):
+    SAVE = "save"
+    APPROVE = "approve"
+
+
 class CreateSessionRequest(StrictModel):
     language: str = Field(default="ko", pattern=r"^[a-z]{2}$")
 
@@ -37,10 +42,37 @@ class SessionResponse(StrictModel):
     websocket_path: str
 
 
+class SessionSummaryResponse(StrictModel):
+    session_id: str
+    status: SessionStatus
+    language: str
+    created_at: datetime
+    updated_at: datetime
+    expires_at: datetime
+    has_draft: bool
+    review_required: bool
+    review_reasons: list[ReviewReason]
+    generator_version: str | None
+
+
 class TranscriptChunkInput(StrictModel):
     sequence: int = Field(ge=1)
     speaker: Speaker = Speaker.UNKNOWN
     text: str = Field(min_length=1, max_length=2000)
+
+
+class TranscriptChunkResponse(StrictModel):
+    sequence: int
+    speaker: Speaker
+    text: str
+
+
+class TranscriptResponse(StrictModel):
+    session_id: str
+    status: SessionStatus
+    expires_at: datetime
+    transcript_available: bool
+    chunks: list[TranscriptChunkResponse]
 
 
 class ChunkAck(StrictModel):
@@ -81,6 +113,38 @@ class NoteDraftResponse(StrictModel):
     review_reasons: list[ReviewReason]
     generator_version: str
     generated_at: datetime
+
+
+class ReviewDraftRequest(StrictModel):
+    subjective: str = Field(min_length=1, max_length=4000)
+    objective: str = Field(min_length=1, max_length=4000)
+    plan: str = Field(min_length=1, max_length=4000)
+    action: ReviewAction = ReviewAction.SAVE
+
+
+class ReviewDraftResponse(StrictModel):
+    session_id: str
+    status: SessionStatus
+    review_required: bool
+    review_reasons: list[ReviewReason]
+    transcript_purged: bool
+    updated_at: datetime
+
+
+class AuditEventResponse(StrictModel):
+    event_type: str
+    created_at: datetime
+
+
+class OperationsResponse(StrictModel):
+    database_ready: bool
+    transcript_store_ready: bool
+    session_counts: dict[str, int]
+    total_sessions: int
+    review_queue: int
+    transcript_ttl_seconds: int
+    note_generator_version: str
+    speech_recognizer_version: str | None
 
 
 class PurgeResponse(StrictModel):
