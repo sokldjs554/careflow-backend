@@ -30,6 +30,19 @@ def test_product_demo_lifecycle_indices_match_visible_steps(client: TestClient) 
     assert 'if(order!==null&&i===order)n.classList.add("current")' in html
 
 
+def test_product_demo_shows_evidence_flow_and_section_coverage(client: TestClient) -> None:
+    response = client.get("/")
+
+    assert response.status_code == 200
+    html = response.text
+    assert "01 · 발화 수집" in html
+    assert "02 · Evidence map" in html
+    assert "03 · S / O / P" in html
+    assert "04 · Review / Purge" in html
+    assert 'required=["subjective","objective","plan"]' in html
+    assert "required.filter(section=>covered.has(section)).length/required.length*100" in html
+
+
 def test_product_demo_shows_post_training_selection_path(client: TestClient) -> None:
     response = client.get("/")
 
