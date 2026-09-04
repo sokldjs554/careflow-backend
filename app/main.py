@@ -48,6 +48,7 @@ def _provider_neutral_demo_html() -> str:
         "실제 환자·임상 데이터가 아닌 합성 데이터만 사용합니다.",
         "실제 환자·임상 데이터가 아닌 합성·비식별 데이터만 사용합니다.",
     )
+
     old_lifecycle = (
         'function updateLifecycle(status,purged,review){const order=status==="idle"?0:'
         'status==="created"?1:status==="streaming"?2:status==="processing"?3:'
@@ -65,6 +66,33 @@ def _provider_neutral_demo_html() -> str:
         'if(order!==null&&i===order)n.classList.add("current")});'
     )
     html = html.replace(old_lifecycle, new_lifecycle)
+
+    old_coverage = (
+        "function computeCoverage(draft,sourceTranscript){if(!draft||!sourceTranscript.length)"
+        "return null;const refs=new Set((draft.evidence||[]).flatMap(e=>e.source_sequences));"
+        "const seqs=new Set(sourceTranscript.map(t=>t.sequence));let hit=0;seqs.forEach(s=>"
+        "{if(refs.has(s))hit++});return Math.round((hit/seqs.size)*100)}"
+    )
+    new_coverage = (
+        'function computeCoverage(draft,sourceTranscript){if(!draft||!sourceTranscript.length)'
+        'return null;const required=["subjective","objective","plan"];const covered=new Set('
+        '(draft.evidence||[]).filter(e=>e.source_sequences?.length).map(e=>e.section));return '
+        'Math.round(required.filter(section=>covered.has(section)).length/required.length*100)}'
+    )
+    html = html.replace(old_coverage, new_coverage)
+
+    console_marker = '<div class="console-grid">'
+    evidence_flow = (
+        '<div class="architecture" style="margin:0 0 12px">'
+        '<div class="arch-flow" style="grid-template-columns:repeat(4,1fr)">'
+        '<div class="arch-node"><b>01 · 발화 수집</b><span>sequence와 speaker를 보존</span></div>'
+        '<div class="arch-node"><b>02 · Evidence map</b><span>원문 sequence를 섹션 근거로 연결</span></div>'
+        '<div class="arch-node"><b>03 · S / O / P</b><span>근거가 있는 초안만 편집·검토</span></div>'
+        '<div class="arch-node"><b>04 · Review / Purge</b><span>검토 전환 또는 정상 완료 후 삭제</span></div>'
+        '</div></div>'
+        + console_marker
+    )
+    html = html.replace(console_marker, evidence_flow, 1)
 
     quality_heading = (
         '<section class="view" id="view-quality"><div class="section-title">'
