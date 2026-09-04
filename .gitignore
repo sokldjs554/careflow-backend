@@ -17,3 +17,6 @@ htmlcov/
 *.ogg
 *.webm
 test-audio/
+ai/data/training/
+ai/outputs/
+ai/reports/*.json
