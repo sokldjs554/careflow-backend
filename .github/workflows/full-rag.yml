@@ -1,0 +1,34 @@
+name: Full RAG Benchmark
+
+on:
+  push:
+    branches:
+      - careflow-v3-jobfit
+    paths:
+      - .github/workflows/full-rag.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  full-rag:
+    name: BGE-M3 + CrossEncoder benchmark
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      HF_HUB_DISABLE_TELEMETRY: "1"
+      TOKENIZERS_PARALLELISM: "false"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: true
+      - name: Install Python and benchmark dependencies
+        run: |
+          uv python install 3.12
+          uv sync --locked --extra dev
+          uv pip install -r ai/requirements-rag-full.txt
+      - name: Run full semantic RAG benchmark
+        run: uv run python -m ai.lab rag-full
