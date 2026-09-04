@@ -118,7 +118,8 @@ def _provider_neutral_demo_html() -> str:
       .brand-mark{width:32px;height:32px;border-color:rgba(94,234,212,.5)}
       .top-divider{height:26px;background:rgba(255,255,255,.22)}
       .product-label{font-size:13px;color:#f1f5fb;font-weight:800;letter-spacing:0}
-      .runtime-pill{font-size:12px;font-weight:750;color:#f7f9fc;background:rgba(255,255,255,.075);border-color:rgba(255,255,255,.22);padding:8px 12px}
+      .runtime-pill{font-size:12px;font-weight:750;color:#f7f9fc;
+        background:rgba(255,255,255,.075);border-color:rgba(255,255,255,.22);padding:8px 12px}
       .dot{width:8px;height:8px}
       .metric-label{font-size:10px;color:#718096;letter-spacing:.055em}
       .metric-value{font-size:18px;font-weight:900}
