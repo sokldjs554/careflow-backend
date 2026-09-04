@@ -11,6 +11,7 @@
 | SFT | Qwen2.5 LoRA/QLoRA pipeline | Qwen2.5-0.5B CPU LoRA 1 epoch 실제 학습 완료 | corrected Base vs SFT holdout gate 재실행 중 |
 | DPO | chosen/rejected + DPOTrainer pipeline | 데이터 계약 120쌍 통과 | SFT가 게이트를 넘은 경우에만 학습 |
 | Evaluation | rule gate + Claude Sonnet 5 LLM-as-a-Judge | CI rule gate + live synthetic 6건 실제 실행 | 더 큰 허용 평가셋/전문가 평가 시 재검증 |
+| Live generation | Claude Sonnet 5 S/O/P structured generator | 합성 1건 실제 API 생성 + evidence contract 통과 | UI E2E 정상 세션 재검증 |
 
 ## 검색 실험 — 2026-09-04
 
@@ -104,6 +105,21 @@ SFT는 다음 세 조건을 모두 만족해야 DPO 단계로 넘어갑니다.
 3. reference-token F1이 Base 대비 최소 `+0.02`
 
 DPO도 SFT와 같은 원칙으로 다시 평가합니다. 좋은 결과가 나오지 않으면 `SFT/DPO를 사용했다`는 이유만으로 제품에 채택하지 않습니다.
+
+## Live Claude S/O/P — 실제 생성 계약 확인
+
+2026-09-04 Codespace에서 `scripts/live_claude_check.py`를 실제 Anthropic API로 실행했습니다.
+
+- generator: `anthropic-claude-sonnet-5-sop-v1`
+- latency: `5217.679 ms`
+- Subjective: 환자 진술 2개 발화를 `source_sequences [1, 2]`에 연결
+- Objective: 관찰 발화를 `source_sequences [3]`에 연결
+- Plan: 의료진 계획 발화를 `source_sequences [4]`에 연결
+- structured output schema와 evidence contract 모두 통과
+
+이 값은 **합성 상담 1건의 live API contract check**이며 평균 지연시간이나 임상 품질 지표로 해석하지 않습니다. 이전에 정상 세션까지 `REVIEW_REQUIRED`로 떨어지던 상태와 달리, 생성기 단독 경로에서는 실제 Claude structured output이 정상 완료됨을 확인했습니다. 다음 게이트는 Review Workspace에서 같은 정상 세션을 E2E로 다시 실행해 `ready → purge`까지 확인하는 것입니다.
+
+원시 결과: [`results/live-claude-sop-2026-09-04.json`](results/live-claude-sop-2026-09-04.json)
 
 ## LLM-as-a-Judge — 실제 실행
 
