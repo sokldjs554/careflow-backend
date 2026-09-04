@@ -15,8 +15,19 @@ def test_product_demo_exposes_visible_workflow_controls(client: TestClient) -> N
     assert "review queue" in html
     assert "ai quality" in html
     assert "assessment — blocked" in html
+    assert "합성·비식별 데이터" in response.text
     assert "claude" not in html
     assert "anthropic" not in html
+
+
+def test_product_demo_lifecycle_indices_match_visible_steps(client: TestClient) -> None:
+    response = client.get("/")
+
+    assert response.status_code == 200
+    html = response.text
+    assert 'status==="created"?0:status==="streaming"?1:status==="processing"?2:' in html
+    assert 'status==="review_required"?3:null;' in html
+    assert 'if(order!==null&&i===order)n.classList.add("current")' in html
 
 
 def test_quality_report_preserves_adopt_and_reject_decisions(client: TestClient) -> None:
