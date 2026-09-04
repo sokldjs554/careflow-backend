@@ -1,281 +1,342 @@
-# CareFlow Backend
+# CareFlow
 
-실시간 상담 발화를 **WebSocket → faster-whisper → Claude → 근거가 연결된 S/O/P 초안 → 사람 검토 → 원문 삭제**로 연결한 백엔드 포트폴리오 프로젝트입니다.
+> **Realtime Clinical Documentation + AI Experiment Platform**  
+> 상담 발화를 근거가 연결된 S/O/P 초안으로 만들고, 사람 검토·데이터 수명주기·RAG·멀티모달·SLM post-training·평가까지 하나의 프로젝트에서 검증합니다.
 
-단순 음성 요약 데모가 아니라, AI 출력의 근거·검토 상태·재시도·데이터 수명주기·운영 상태를 하나의 서비스 계약으로 다루는 것을 목표로 했습니다. 임상 판단인 `Assessment`는 JSON Schema와 Pydantic 수준에서 허용하지 않습니다.
+CareFlow는 닥터프레소의 공개 제품/채용 정보를 참고해 **독립적으로 설계한 취업 포트폴리오**입니다. 특정 회사의 비공개 구현을 추정하거나 복제하지 않았습니다. 합성·비식별 데이터만 사용하며 의료기기·진단·치료 서비스가 아닙니다.
 
-> 닥터프레소의 공개 제품 설명을 읽고 독립적으로 설계한 취업 포트폴리오입니다. 특정 기업의 비공개 구현을 추정하거나 복제하지 않았습니다. 합성·비식별 데이터만 사용하며 의료기기·진단·치료 서비스가 아닙니다.
+---
 
-## CareFlow V2
+## 1. 30초 요약
 
-V2에서는 기존의 기능 확인용 화면을 **실제 검토 업무를 설명할 수 있는 Review Workspace**로 바꿨습니다.
+처음 버전은 `WebSocket → STT → S/O/P` 기능 확인에 가까웠습니다. V2에서 실제 검토 업무를 설명할 수 있는 Review Workspace로 바꿨고, V3에서는 채용공고에서 부족했던 **Vector DB/Reranker RAG, EMA+Text 멀티모달, SFT/DPO, AI evaluation**을 제품 경로와 분리된 실험 트랙으로 추가했습니다.
 
-- 최근 세션 목록과 `created / streaming / review_required / ready / purged` 상태를 한 화면에서 확인
-- 정상·근거 공백·sequence gap·safety signal·중복 재전송 시나리오 재현
-- WebSocket text와 브라우저 마이크를 같은 세션 상태 머신으로 처리; 오디오 파일 입력은 테스트용 경로로만 유지
-- S/O/P의 `evidence sequence`를 누르면 해당 transcript 발화를 강조
-- `review_required` 초안을 직접 수정하고 저장하거나 승인 가능
-- 검토가 필요한 전사 원문은 Redis TTL 동안만 유지하고 **사람 승인 시 삭제**
-- 검토가 필요 없는 정상 초안은 finalize 직후 전사 원문 삭제
-- Audit timeline에는 원문 대신 이벤트와 해시만 기록
-- DB·Transcript Store 상태, TTL, review queue와 브라우저 기준 finalize 왕복 시간을 UI에서 확인
+| 트랙 | 핵심 |
+| --- | --- |
+| Clinical Note | WebSocket → faster-whisper → S/O/P → Evidence → Human Review → Purge |
+| RAG Assist | Qdrant + lexical + RRF + reranker + LangGraph; full BGE adapter 별도 |
+| Multimodal Lab | EMA only / Text only / Fusion을 같은 holdout에서 비교 |
+| SLM Lab | Qwen2.5 QLoRA SFT → 평가 게이트 → 통과 시 DPO |
+| Evaluation | Evidence/unsupported-claim rule gate + optional LLM-as-a-Judge |
+| Platform | FastAPI, PostgreSQL, Redis TTL, Audit, Prometheus, Docker, GitHub Actions |
 
-## 지금 실제로 되는 것
+**핵심 원칙은 “기술을 썼다”보다 “같은 평가셋에서 재고, 회귀하면 채택하지 않는다”입니다.**
 
-| 영역 | 구현 상태 | 검증 경계 |
+---
+
+## 2. 왜 만들었는가
+
+실시간 상담 기록 자동화에서 어려운 부분은 요약 문장 하나를 생성하는 것이 아니라 다음 질문에 답하는 것이라고 봤습니다.
+
+1. AI가 만든 문장이 **어느 원문에서 왔는지** 확인할 수 있는가?
+2. 근거가 없거나 위험한 출력이 나오면 **자동 완료를 멈출 수 있는가?**
+3. 사람 검토가 끝나기 전에 근거 원문을 삭제하지 않으면서도 **필요 이상으로 보관하지 않는가?**
+4. 모델·검색·학습 변경이 좋아졌는지 **같은 기준으로 숫자로 비교할 수 있는가?**
+5. RAG/SFT/DPO를 넣었다는 사실이 아니라 **채택·미채택 판단 근거**를 남길 수 있는가?
+
+CareFlow는 이 다섯 가지를 서비스 계약과 AI 실험 루프로 연결합니다.
+
+---
+
+## 3. 공고 요구와 프로젝트 대응
+
+| 요구 역량 | CareFlow V3 대응 | 현재 상태 |
 | --- | --- | --- |
-| 실시간 세션 | REST + WebSocket text/binary, sequence dedup, Idempotency-Key | 텍스트 전체 경로 실검증; 실제 장시간 연결·수평 확장은 미검증 |
-| 음성 인식 | 브라우저 MediaRecorder → `faster-whisper` (테스트용 파일 입력 경로 별도) | 한국어 합성 TTS 3건에서 정규화 CER 1/70(1.43%); 실제 마이크·소음 환경은 별도 검증 필요 |
-| AI 초안 | Anthropic native Messages API + JSON Schema + Pydantic | 합성 대화 1건 실제 Claude 구조·근거 계약 확인; 임상 품질 일반화는 아님 |
-| Evidence | S/O/P별 source sequence 저장 + UI 클릭 추적 | 존재하지 않는 근거·근거 공백은 자동 완료하지 않고 검토 전환 |
-| Human review | 초안 수정 저장 / 승인, review queue | 승인 시 review reason 제거, `ready` 전환, TTL 원문 삭제 계약 테스트 |
-| 데이터 수명주기 | 음성 비저장, 전사 Redis TTL, 파생 초안 PostgreSQL | 정상 완료는 즉시 purge; 검토 필요는 TTL 내 보존 후 승인 시 purge |
-| 영속화 | PostgreSQL + async SQLAlchemy + Alembic, Redis Hash+TTL | GitHub Actions에서 PostgreSQL 16 migration + Redis 7 실제 서비스 계약 통과 |
-| 운영·관측성 | liveness/readiness, Prometheus, request ID, audit timeline, operations snapshot | 운영 트래픽·장애 복구·장기 부하는 미검증 |
-| CI·컨테이너 | lint, mypy, pytest, SQLite migration, Postgres/Redis integration, Docker build | main merge CI #26의 3개 job 모두 성공 |
-| AWS | ECS·ALB·RDS·ElastiCache Terraform 시작점 | 실제 AWS 계정에는 배포하지 않음 |
+| EMA + Text 멀티모달 분류 | sklearn/NumPy 기반 EMA/Text/Fusion baseline | **CI 검증 완료 — 합성 sanity check** |
+| Vector DB | Qdrant local/server-compatible index | **CI 검증 완료** |
+| RAG + Reranker | lexical + dense + RRF + rerank, LangGraph | **smoke benchmark 완료** |
+| 실제 semantic embedding/reranker | BGE-M3 + bge-reranker-v2-m3 adapter | **구현, full benchmark 미실행** |
+| 오픈소스 LLM SFT | Qwen2.5 + QLoRA/PEFT/TRL | **학습 파이프라인 구현, GPU 실험 미실행** |
+| DPO | chosen/rejected 데이터 계약 + DPOTrainer | **파이프라인 구현, SFT 통과 후 실행** |
+| LLM-as-a-Judge | groundedness/completeness/safety/clarity rubric | **adapter 구현, live judge 미실행** |
+| ML pipeline | data → split → train/eval → regression gate → adopt/reject | **구조 및 CI gate 구현** |
+| Python / PyTorch / sklearn / NumPy | 서비스 + post-training + baseline/eval | **코드 반영** |
 
-## 데이터 수명주기
+공고와 코드의 상세 매핑은 [`docs/job-fit-2026-09-04.md`](docs/job-fit-2026-09-04.md)에 따로 기록했습니다.
+
+---
+
+## 4. 전체 아키텍처
 
 ```mermaid
-flowchart TD
-    A[브라우저 마이크 / WS text] --> B[FastAPI + WebSocket]
-    B --> C[faster-whisper 전사]
-    C --> D[Redis TTL transcript]
-    D --> E[Claude S/O/P structured output]
-    E --> F{근거·안전 계약}
-    F -->|통과| G[PostgreSQL draft]
-    G --> H[transcript 즉시 purge]
-    F -->|review_required| I[Review Workspace]
-    I --> J[사람 수정·검토]
-    J -->|승인| K[ready]
-    K --> L[transcript purge]
-    E -->|provider / schema failure| M[generation_failure]
-    M --> N[TTL 원문으로 재시도]
+flowchart LR
+    A[Browser Mic / WS Text] --> B[FastAPI + WebSocket]
+    B --> C[faster-whisper]
+    C --> D[Redis TTL Transcript]
+    D --> E[S/O/P Structured Generator]
+    E --> F{Evidence & Safety Gate}
+    F -->|pass| G[PostgreSQL Draft]
+    G --> H[Immediate Transcript Purge]
+    F -->|review required| I[Review Workspace]
+    I --> J[Human Edit / Approve]
+    J --> K[Ready + Purge]
+
+    L[Synthetic Guidance Corpus] --> M[Qdrant + Lexical]
+    M --> N[RRF + Reranker]
+    N --> O[LangGraph RAG Assist]
+
+    P[EMA Features] --> Q[Multimodal Lab]
+    R[Text Features] --> Q
+
+    S[Synthetic Safe Pairs] --> T[QLoRA SFT]
+    T --> U{Evaluation Gate}
+    U -->|pass| V[DPO]
+    U -->|regression| W[Reject]
+
+    O --> X[Evaluation Bench]
+    Q --> X
+    T --> X
+    V --> X
 ```
 
-핵심 의도는 **검토할 근거를 먼저 삭제하지 않는 것**입니다. 정상 초안은 원문을 즉시 삭제하지만, `review_required`는 configured TTL 동안만 transcript를 남겨 사람이 evidence와 원문을 대조할 수 있게 하고 승인 시 삭제합니다.
+**RAG 결과는 S/O/P 원문 기록에 자동으로 섞지 않습니다.** 차팅은 transcript evidence에 묶고, 외부 지식 검색은 별도의 참고 경로로 분리했습니다.
 
-## Review Workspace에서 보여주는 것
+---
 
-### 1. Session dashboard
+## 5. Clinical Note — 제품 트랙
 
-최근 세션을 상태별로 필터링할 수 있습니다.
+### Review Workspace
+
+- 최근 세션과 `created / streaming / review_required / ready / purged` 상태
+- 브라우저 마이크와 WebSocket text 입력
+- S/O/P 편집 및 승인
+- 각 문장의 Evidence `#sequence` 클릭 → 원문 발화 강조
+- 근거 공백, sequence gap, safety signal, 중복 재전송 시나리오
+- DB / Transcript Store / TTL / Purge 상태
+- 원문이 아닌 event/hash 중심 Audit timeline
+
+### Human-in-the-loop 데이터 수명주기
 
 ```text
-created → streaming → processing → ready
-                              ↘ review_required → ready
-                                              ↘ purged
+정상 결과
+transcript → structured draft → evidence gate pass → ready → 즉시 purge
+
+검토 필요
+transcript → review_required → TTL 동안 근거 유지
+           → 사람이 확인/수정 → approve → ready → purge
 ```
 
-### 2. Evidence tracing
+`Assessment`는 생성 스키마 자체에서 제외하고, 원문에 없는 진단·치료·처방 결정을 자동 생성하지 않는 것을 경계로 둡니다.
 
-Claude가 생성한 각 section에는 transcript sequence가 연결됩니다.
+---
 
-```json
-{
-  "section": "subjective",
-  "source_sequences": [1, 2]
-}
+## 6. RAG Assist — Vector DB + Reranker
+
+### CI smoke pipeline
+
+```text
+Query
+  ├─→ Qdrant dense smoke
+  └─→ lexical retrieval
+          ↓
+      Reciprocal Rank Fusion
+          ↓
+       reranking
+          ↓
+       Top-k context
+          ↓
+       LangGraph
 ```
 
-UI에서 `#1`, `#2`를 누르면 원문 발화를 바로 강조합니다. TTL 만료나 purge 이후에는 해당 원문이 더 이상 존재하지 않는다는 상태도 명시합니다.
+CI에서는 외부 모델 다운로드 없이 검색 계약과 회귀를 확인하기 위해 deterministic hashing embedding을 사용합니다. 실제 semantic 실험 경로에는 `BAAI/bge-m3` embedding과 `BAAI/bge-reranker-v2-m3` CrossEncoder adapter를 따로 구현했습니다.
 
-### 3. Human-in-the-loop review
+### 2026-09-04 CI smoke 결과
 
-`review_required`에서는 자동 완료하지 않습니다.
+합성 guidance 12건 / retrieval query 8건의 작은 회귀셋입니다. **실서비스 검색 성능으로 일반화하지 않습니다.**
 
-- 초안 문구 수정 후 저장
-- review reason과 evidence 확인
-- 승인 후 `ready` 전환
-- 승인과 함께 transcript purge
-- 수정·승인·삭제 이벤트를 audit timeline에 기록
+| 방식 | Recall@5 | MRR | nDCG@5 |
+| --- | ---: | ---: | ---: |
+| Qdrant hashing smoke | 0.9375 | 0.8750 | 0.8518 |
+| lexical TF-IDF | 1.0000 | 0.9375 | 0.9385 |
+| **hybrid + rerank** | **1.0000** | **1.0000** | **0.9746** |
 
-### 4. Failure / safety scenarios
+Full semantic benchmark:
 
-화면에서 다음 synthetic scenario를 바로 재현할 수 있습니다.
+```bash
+uv pip install -r ai/requirements-training.txt
+uv run python -m ai.lab rag-full
+```
 
-| 시나리오 | 확인할 것 |
+Full 결과가 smoke보다 나쁘면 모델 이름만 보고 채택하지 않습니다.
+
+---
+
+## 7. Multimodal Lab — EMA + Text
+
+실제 의료 데이터가 없는 상태에서 질환 예측 성능을 꾸미지 않기 위해, **합성 EMA feature + 합성 Korean text**로 파이프라인 sanity check만 수행합니다.
+
+같은 train/test split에서 세 기준선을 비교합니다.
+
+| 입력 | ROC-AUC | F1 | Brier ↓ |
+| --- | ---: | ---: | ---: |
+| EMA only | 0.6910 | 0.5938 | 0.2220 |
+| Text only | 0.6355 | 0.5299 | 0.2332 |
+| **Fusion** | **0.7408** | **0.6154** | **0.2027** |
+
+이 수치는 **임상 성능이 아니라 데이터→학습→평가→회귀 게이트가 재현되는지 확인한 값**입니다. 공개/허용된 실제 데이터셋을 쓸 경우 동일한 평가 인터페이스로 다시 측정하도록 분리했습니다.
+
+---
+
+## 8. SLM Lab — SFT → DPO
+
+AICAMP 공개 프로젝트들을 참고하되, “파인튜닝했다”를 결과로 보지 않고 **Base보다 좋아졌는지 확인한 뒤에만 채택**하도록 만들었습니다.
+
+```text
+Synthetic / reviewed examples
+        ↓
+PII·duplicate·split leakage·safety gate
+        ↓
+Qwen2.5 QLoRA SFT
+        ↓
+Base vs SFT — same holdout
+        ↓
+  ┌──── pass ────┐
+reject        DPO chosen/rejected
+                  ↓
+           SFT vs SFT+DPO
+                  ↓
+             adopt / reject
+```
+
+현재 CI에서는 학습용 계약 120건과 DPO preference 120쌍을 생성·검증했습니다. **GPU SFT/DPO는 아직 실행하지 않았으므로 개선 효과를 주장하지 않습니다.**
+
+```bash
+uv run python -m ai.posttrain generate --count 120
+uv pip install -r ai/requirements-training.txt
+uv run python -m ai.posttrain sft
+uv run python -m ai.posttrain dpo --model ai/outputs/sft-merged
+```
+
+채택 기준은 loss가 아니라 holdout의 groundedness, safety, format, hallucination, latency입니다. SFT가 회귀하면 DPO 이전에 중단하고, DPO가 회귀하면 서비스에 붙이지 않습니다.
+
+---
+
+## 9. Evaluation Bench
+
+평가는 세 층으로 분리합니다.
+
+1. **Deterministic gate** — Evidence 존재, 원문에 없는 숫자, 금지 진단/처방 표현
+2. **Retrieval metrics** — Recall@5, MRR, nDCG@5
+3. **LLM-as-a-Judge** — groundedness / completeness / safety / clarity
+
+`anthropic_judge()`는 실제 생성 결과를 rubric으로 평가할 수 있지만 CI에서는 비용과 외부 의존성 때문에 호출하지 않습니다. 임상 전문의 평가를 수행하지 않은 상태에서는 절대 임상 검증으로 표현하지 않습니다.
+
+---
+
+## 10. 검증 현황
+
+### V3 branch CI
+
+V3는 기존 CI에 `AI lab smoke` job을 추가해 네 개 축을 별도로 확인합니다.
+
+| Job | 검증 |
 | --- | --- |
-| 정상 상담 | S/O/P + evidence 생성 → `ready` → transcript purge |
-| 근거 공백 | `evidence_gap` → `review_required` |
-| Sequence gap | 누락 sequence 감지 → `review_required` |
-| Safety signal | 위험 신호를 자동 판단으로 끝내지 않고 사람 검토로 전환 |
-| 중복 재전송 | 동일 sequence를 중복 저장하지 않는 idempotent 처리 |
+| Unit, lint, type, migration | 기존 API 계약, ruff, mypy, pytest, SQLite migration |
+| PostgreSQL 16 and Redis 7 | 실제 service-container migration/integration |
+| Docker image build | runtime image build |
+| **AI lab smoke** | RAG, LangGraph, multimodal, evaluation, SFT/DPO data contract |
 
-## API
+V3 AI lab 기준:
 
-주요 REST 경로:
+- AI lab tests: **5 passed**
+- RAG smoke benchmark: **완료**
+- Multimodal synthetic benchmark: **완료**
+- deterministic evaluation gate: **3/3 pass**
+- SFT dataset contract: **120건 valid**
+- DPO preference contract: **120쌍 valid**
 
-```text
-GET    /v1/capabilities
-GET    /v1/operations
-POST   /v1/sessions
-GET    /v1/sessions
-GET    /v1/sessions/{session_id}
-GET    /v1/sessions/{session_id}/transcript
-POST   /v1/sessions/{session_id}/chunks
-POST   /v1/sessions/{session_id}/finalize
-GET    /v1/sessions/{session_id}/draft
-PATCH  /v1/sessions/{session_id}/draft
-GET    /v1/sessions/{session_id}/audit
-DELETE /v1/sessions/{session_id}
-```
+기존 CareFlow 검증도 유지합니다.
 
-WebSocket:
+- non-integration tests: 37 passed 기준
+- ruff / mypy / Alembic migration
+- PostgreSQL 16 + Redis 7 integration
+- Docker runtime image build
+- 한국어 합성 TTS 3건 정규화 CER 1/70 = 1.43%
+- 합성 대화 Claude 구조·근거 계약 1건
+- Codespaces WebSocket text → draft → purge 검증
 
-```text
-/v1/ws/sessions/{session_id}
-```
+---
 
-텍스트와 오디오가 동일한 `SessionService`와 sequence 규칙을 사용합니다.
+## 11. 기술 구성
 
-## 설계에서 확인할 부분
-
-- REST와 WebSocket이 하나의 세션 상태 머신을 공유합니다.
-- `sequence`로 발화 재전송을, `Idempotency-Key`로 세션 중복 생성을 방지합니다.
-- Claude 요청은 Anthropic `/v1/messages`를 직접 사용합니다.
-- `output_config.format` JSON Schema와 Pydantic `extra=forbid`를 이중 적용합니다.
-- transcript 내부 지시는 비신뢰 입력으로 취급합니다.
-- `Assessment` 필드는 생성 스키마 자체에 존재하지 않습니다.
-- S/O/P의 모든 근거 sequence를 검사하고 근거가 없거나 잘못되면 검토 상태로 전환합니다.
-- Claude provider·schema 실패는 실패 초안을 남기고 TTL 내 재시도를 허용합니다.
-- 원본 음성은 메모리와 자동 삭제 임시 파일에서만 처리하고 DB·Redis에 저장하지 않습니다.
-- Audit에는 발화 내용이 아니라 SHA-256 hash와 event type만 남깁니다.
-- Redis와 PostgreSQL을 하나의 원자 트랜잭션으로 묶었다고 주장하지 않으며, 운영에서는 outbox/보상·lease/recovery가 추가로 필요합니다.
-
-## 기술 구성
-
-| 영역 | 구현 |
+| 영역 | 기술 |
 | --- | --- |
 | API | FastAPI, Pydantic strict schema, OpenAPI |
-| Realtime | WebSocket text/binary, REST fallback, sequence deduplication |
-| STT | faster-whisper 1.2.1, PyAV, CTranslate2, VAD, CPU int8 기본값 |
-| LLM | Claude Sonnet 5, Anthropic Messages API, JSON Schema structured output |
-| Review | Evidence tracing, review queue, draft edit/approve, audit timeline |
-| DB | PostgreSQL, async SQLAlchemy, Alembic; SQLite test adapter |
-| Short-lived data | Redis Hash + TTL; fakeredis contract test |
-| Observability | liveness/readiness, Prometheus metrics, request ID, operations API |
-| Operations | Docker Compose, GitHub Actions, Terraform skeleton |
+| Realtime | WebSocket text/binary, sequence deduplication |
+| STT | faster-whisper, PyAV, CTranslate2 |
+| LLM | Anthropic Messages API, JSON Schema structured output |
+| Review | Evidence tracing, review queue, edit/approve, audit timeline |
+| RAG | Qdrant, TF-IDF, RRF, BGE-M3 adapter, CrossEncoder reranker, LangGraph |
+| ML | NumPy, SciPy, scikit-learn; EMA/Text fusion baseline |
+| Post-training | PyTorch, Transformers, PEFT/QLoRA, TRL SFT/DPO |
+| DB | PostgreSQL, async SQLAlchemy, Alembic |
+| Short-lived data | Redis Hash + TTL |
+| Observability | liveness/readiness, Prometheus, request ID |
+| Operations | Docker, GitHub Actions, Terraform skeleton |
 
-## 실행
+---
 
-Python 3.11 이상이 필요합니다.
+## 12. 프로젝트 구조
+
+```text
+careflow-backend/
+├── app/                 # 제품 경로: API, WebSocket, review workspace
+├── ai/
+│   ├── lab.py           # RAG, multimodal, evaluation, full-model adapters
+│   ├── posttrain.py     # SFT / DPO dataset + training pipeline
+│   ├── data/            # 합성 knowledge / retrieval holdout
+│   ├── tests/           # AI regression gates
+│   └── README.md        # 실험 방법과 채택 기준
+├── tests/               # 제품 unit/contract/integration
+├── docs/                # 검증·job-fit·release 문서
+├── terraform/           # AWS IaC 시작점
+└── .github/workflows/   # product + AI lab CI
+```
+
+---
+
+## 13. 실행
+
+### 제품
 
 ```bash
 uv sync --locked --extra dev --extra speech
 cp .env.example .env
 nano .env
-```
-
-`.env`에는 개인 키를 로컬에서만 설정합니다.
-
-```dotenv
-NOTE_GENERATOR_MODE=anthropic
-ANTHROPIC_API_KEY=
-ANTHROPIC_MODEL=claude-sonnet-5
-SPEECH_RECOGNITION_MODE=faster_whisper
-WHISPER_MODEL=small
-WHISPER_DEVICE=cpu
-WHISPER_COMPUTE_TYPE=int8
-```
-
-실행:
-
-```bash
 make run-live
 ```
 
-브라우저에서 `http://localhost:8000`을 엽니다. 첫 Whisper 실행은 `small` 모델 다운로드와 로딩 때문에 오래 걸릴 수 있습니다.
-
-Claude 비용 없이 회귀 테스트용 기준선만 실행하려면 `NOTE_GENERATOR_MODE=deterministic`을 사용합니다. 이 모드는 실제 LLM 문맥 요약을 대신하지 않습니다.
-
-## Codespaces에서 main V2 확인
+### AI smoke
 
 ```bash
-git fetch origin
-git switch main
-git pull --ff-only origin main
-uv sync --locked --extra dev --extra speech
-make run-live
+make ai-sync
+make ai-verify
 ```
 
-Ports 탭의 `8000`을 브라우저에서 열고 포트 공개 범위는 Private로 유지합니다.
-
-권장 데모 순서:
-
-1. `정상 상담` → `시나리오 실행`
-2. `AI 초안 생성`
-3. S/O/P evidence `#번호`를 눌러 transcript highlight 확인
-4. `Safety signal` 시나리오를 새로 실행
-5. `review_required`와 transcript TTL 유지 확인
-6. 초안을 수정하고 `수정 저장`
-7. `승인하고 원문 삭제`
-8. 상태가 `ready`, purge가 완료되고 audit event가 남는지 확인
-
-## WebSocket 오디오 계약
-
-먼저 메타데이터를 보냅니다.
-
-```json
-{"type":"audio.start","sequence":1,"speaker":"patient","content_type":"audio/webm"}
-```
-
-`audio.ready` 뒤 완성된 WebM/MP4/Ogg/WAV/MP3 binary frame을 전송합니다.
-
-성공 응답 예시:
-
-```json
-{
-  "type": "transcript.recognized",
-  "sequence": 1,
-  "speaker": "patient",
-  "text": "최근 잠들기 어려웠습니다.",
-  "duplicate": false,
-  "language": "ko",
-  "duration_seconds": 2.4,
-  "recognizer_version": "faster-whisper-small-v1",
-  "raw_audio_persisted": false
-}
-```
-
-## 검증
+### Full RAG / SFT / DPO
 
 ```bash
-uv run ruff check .
-uv run mypy app
-uv run pytest -m "not integration"
-DATABASE_URL=sqlite+aiosqlite:///./release-check.db uv run alembic upgrade head
+uv pip install -r ai/requirements-training.txt
+uv run python -m ai.lab rag-full
+make training-data
+make sft
+make dpo
 ```
 
-2026-09-04 CareFlow V2 main merge 기준:
+대용량 model/checkpoint와 생성 학습 데이터는 Git에 커밋하지 않습니다.
 
-| 검증 | 결과 |
-| --- | --- |
-| pytest non-integration | 37 passed |
-| ruff | all checks passed |
-| mypy | 15개 source files, 오류 0 |
-| SQLite migration | 성공 |
-| PostgreSQL 16 + Redis 7 | 실제 service-container integration 성공 |
-| Docker image | runtime image build 성공 |
-| GitHub Actions | main merge CI #26의 3개 job 모두 성공 |
-| 한국어 STT 소표본 | 합성 TTS 3건, 정규화 CER 1/70 = 1.43% |
-| Claude 실호출 | 합성 대화 1건의 S/O/P + evidence contract 확인 |
-| 텍스트 E2E | Codespaces WebSocket text → Claude → draft → purge 확인 |
-| 인프로세스 회귀 벤치마크 | 기존 기준 300세션·1,500요청·실패 0; finalize p95 6.029ms |
+---
 
-인프로세스 벤치마크는 PostgreSQL·Redis·네트워크·Whisper·Claude·AWS 처리량을 의미하지 않습니다.
+## 14. 정직한 한계
 
-## 정직한 한계
+- 실제 환자 데이터·의료진 평가·임상 정확도 검증을 사용하지 않았습니다.
+- EMA+Text 수치는 synthetic sanity check이며 우울증/PTSD 예측 성능이 아닙니다.
+- RAG 숫자는 작은 synthetic regression set의 CI smoke 결과입니다.
+- BGE-M3 + CrossEncoder full benchmark는 코드가 준비됐지만 아직 실행 결과를 기록하지 않았습니다.
+- SFT/DPO는 파이프라인과 데이터 계약까지 구현됐고 GPU 학습 결과는 아직 없습니다.
+- LLM-as-a-Judge adapter는 구현했지만 V3 live evaluation은 아직 실행하지 않았습니다.
+- 실제 마이크·억양·배경 소음 환경의 최종 E2E 검증이 남아 있습니다.
+- AWS는 IaC 시작점이며 실제 계정에 배포하지 않았습니다.
+- 인증·다중 테넌시·KMS·DR·WebSocket drain/autoscaling은 production 전 추가 설계가 필요합니다.
 
-- 실제 환자 데이터, 의료진 평가, 임상 정확도 검증을 사용하지 않았습니다.
-- 한국어 CER 1.43%는 깨끗한 합성 TTS 3건의 소표본입니다.
-- 실제 마이크·억양·배경 소음·겹침 발화 STT 평가는 아직 하지 않았습니다.
-- Claude 실호출은 합성 대화의 구조·근거 계약 확인이며, 다양한 상담 문맥의 품질·지연·비용 평가는 별도 과제입니다.
-- 발화 단위 준실시간 처리이며 연속 부분 자막 streaming ASR은 구현하지 않았습니다.
-- 인증·권한·다중 테넌시·KMS·비밀 회전·운영 DR은 포트폴리오 범위 밖입니다.
-- Redis/PostgreSQL 분산 상태에 대한 outbox, worker lease/recovery, WebSocket drain·autoscaling은 운영 전 추가 설계가 필요합니다.
-- AWS 폴더는 IaC 시작점이며 실제 계정에 plan/apply하지 않았습니다.
-- 실제 의료정보를 외부 Claude API로 처리하려면 별도 계약·동의·보안·규제 검토가 필요합니다.
-
-공개 전에는 [`docs/github-release-checklist.md`](docs/github-release-checklist.md)를 기준으로 비밀·개인 데이터·라이선스·재현성을 다시 확인합니다.
+좋아진 결과만 남기지 않습니다. **실험이 회귀하면 미채택 결과도 README와 보고서에 남기는 것**을 이 프로젝트의 평가 원칙으로 둡니다.
