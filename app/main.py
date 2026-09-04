@@ -56,9 +56,20 @@ def _provider_neutral_demo_html() -> str:
             '"AI drafting · speech ready" : "AI drafting · text only";'
         ),
         (
+            '$("runtime-text").textContent=`${cap.note_generator_version} · '
+            '${cap.speech_recognizer_version||"STT off"}`;'
+        ): (
+            '$("runtime-text").textContent=cap.speech_enabled?'
+            '"AI drafting · speech ready":"AI drafting · text only";'
+        ),
+        (
             '$("metric-runtime").textContent = cap.note_generator_version'
             '.replace("anthropic-", "").replace("-sop-v1", "");'
         ): '$("metric-runtime").textContent = "AI drafting";',
+        (
+            '$("metric-runtime").textContent=cap.note_generator_version'
+            '.replace("anthropic-","").replace("-sop-v1","");'
+        ): '$("metric-runtime").textContent="AI drafting";',
         (
             '$("metric-runtime-sub").textContent = '
             'cap.speech_recognizer_version || "STT disabled";'
@@ -67,9 +78,20 @@ def _provider_neutral_demo_html() -> str:
             '"Speech recognition enabled" : "Speech recognition disabled";'
         ),
         (
+            '$("metric-runtime-sub").textContent='
+            'cap.speech_recognizer_version||"STT disabled";'
+        ): (
+            '$("metric-runtime-sub").textContent=cap.speech_enabled?'
+            '"Speech recognition enabled":"Speech recognition disabled";'
+        ),
+        (
             '$("draft-version").textContent = `${draft.generator_version} · '
             '${formatTime(draft.generated_at)}`;'
         ): '$("draft-version").textContent = `AI draft · ${formatTime(draft.generated_at)}`;',
+        (
+            '$("draft-version").textContent=`${draft.generator_version} · '
+            '${formatTime(draft.generated_at)}`;'
+        ): '$("draft-version").textContent=`AI draft · ${formatTime(draft.generated_at)}`;',
     }
     for source, target in replacements.items():
         html = html.replace(source, target)
