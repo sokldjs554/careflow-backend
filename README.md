@@ -14,7 +14,7 @@ CareFlow는 닥터프레소의 공개 제품/채용 정보를 참고해 **독립
 | 트랙 | 핵심 |
 | --- | --- |
 | Clinical Note | WebSocket → faster-whisper → S/O/P → Evidence → Human Review → Purge |
-| RAG Assist | Qdrant + lexical + RRF + reranker + LangGraph; full BGE adapter 별도 |
+| RAG Assist | Qdrant + lexical + RRF + reranker + LangGraph; BGE-M3 full benchmark 포함 |
 | Multimodal Lab | EMA only / Text only / Fusion을 같은 holdout에서 비교 |
 | SLM Lab | Qwen2.5 QLoRA SFT → 평가 게이트 → 통과 시 DPO |
 | Evaluation | Evidence/unsupported-claim rule gate + optional LLM-as-a-Judge |
@@ -45,7 +45,7 @@ CareFlow는 이 다섯 가지를 서비스 계약과 AI 실험 루프로 연결�
 | EMA + Text 멀티모달 분류 | sklearn/NumPy 기반 EMA/Text/Fusion baseline | **CI 검증 완료 — 합성 sanity check** |
 | Vector DB | Qdrant local/server-compatible index | **CI 검증 완료** |
 | RAG + Reranker | lexical + dense + RRF + rerank, LangGraph | **smoke benchmark 완료** |
-| 실제 semantic embedding/reranker | BGE-M3 + bge-reranker-v2-m3 adapter | **구현, full benchmark 미실행** |
+| 실제 semantic embedding/reranker | BGE-M3 + bge-reranker-v2-m3 adapter | **full benchmark 완료 — 현재 회귀셋에서는 미채택** |
 | 오픈소스 LLM SFT | Qwen2.5 + QLoRA/PEFT/TRL | **학습 파이프라인 구현, GPU 실험 미실행** |
 | DPO | chosen/rejected 데이터 계약 + DPOTrainer | **파이프라인 구현, SFT 통과 후 실행** |
 | LLM-as-a-Judge | groundedness/completeness/safety/clarity rubric | **adapter 구현, live judge 미실행** |
@@ -140,7 +140,7 @@ Query
 
 CI에서는 외부 모델 다운로드 없이 검색 계약과 회귀를 확인하기 위해 deterministic hashing embedding을 사용합니다. 실제 semantic 실험 경로에는 `BAAI/bge-m3` embedding과 `BAAI/bge-reranker-v2-m3` CrossEncoder adapter를 따로 구현했습니다.
 
-### 2026-09-04 CI smoke 결과
+### 2026-09-04 검색 실험 결과
 
 합성 guidance 12건 / retrieval query 8건의 작은 회귀셋입니다. **실서비스 검색 성능으로 일반화하지 않습니다.**
 
@@ -148,16 +148,17 @@ CI에서는 외부 모델 다운로드 없이 검색 계약과 회귀를 확인�
 | --- | ---: | ---: | ---: |
 | Qdrant hashing smoke | 0.9375 | 0.8750 | 0.8518 |
 | lexical TF-IDF | 1.0000 | 0.9375 | 0.9385 |
-| **hybrid + rerank** | **1.0000** | **1.0000** | **0.9746** |
+| **hybrid + smoke rerank** | **1.0000** | **1.0000** | **0.9746** |
+| BGE-M3 + CrossEncoder | 0.9375 | 1.0000 | 0.9416 |
 
-Full semantic benchmark:
+Full semantic benchmark는 별도 GitHub Actions workflow에서 실제 모델을 다운로드해 실행했습니다.
 
 ```bash
-uv pip install -r ai/requirements-training.txt
+uv pip install -r ai/requirements-rag-full.txt
 uv run python -m ai.lab rag-full
 ```
 
-Full 결과가 smoke보다 나쁘면 모델 이름만 보고 채택하지 않습니다.
+현재 작은 synthetic regression set에서는 BGE-M3 + CrossEncoder가 smoke hybrid보다 Recall@5는 `-0.0625`, nDCG@5는 `-0.0330` 낮고 MRR은 동일했습니다. 따라서 **모델 이름만 보고 교체하지 않고 현재는 미채택**으로 기록합니다. 모델 adapter와 재현 경로는 유지하되, 더 큰 허용 데이터셋에서 다시 평가한 뒤 채택 여부를 판단합니다. 원시 결과와 결정은 [`ai/results/full-rag-2026-09-04.json`](ai/results/full-rag-2026-09-04.json)에 남겼습니다.
 
 ---
 
@@ -240,6 +241,8 @@ V3 AI lab 기준:
 
 - AI lab tests: **5 passed**
 - RAG smoke benchmark: **완료**
+- Full RAG Benchmark: **성공 — BGE-M3 + CrossEncoder 실제 모델 실행**
+- Full RAG 결과: **Recall@5 0.9375 / MRR 1.0000 / nDCG@5 0.9416 — 현재 회귀셋 미채택**
 - Multimodal synthetic benchmark: **완료**
 - deterministic evaluation gate: **3/3 pass**
 - SFT dataset contract: **120건 valid**
@@ -285,12 +288,13 @@ careflow-backend/
 │   ├── lab.py           # RAG, multimodal, evaluation, full-model adapters
 │   ├── posttrain.py     # SFT / DPO dataset + training pipeline
 │   ├── data/            # 합성 knowledge / retrieval holdout
+│   ├── results/         # 재현한 실험 결과와 adopt/reject 결정
 │   ├── tests/           # AI regression gates
 │   └── README.md        # 실험 방법과 채택 기준
 ├── tests/               # 제품 unit/contract/integration
 ├── docs/                # 검증·job-fit·release 문서
 ├── terraform/           # AWS IaC 시작점
-└── .github/workflows/   # product + AI lab CI
+└── .github/workflows/   # product + AI lab CI / full RAG benchmark
 ```
 
 ---
@@ -316,8 +320,9 @@ make ai-verify
 ### Full RAG / SFT / DPO
 
 ```bash
-uv pip install -r ai/requirements-training.txt
+uv pip install -r ai/requirements-rag-full.txt
 uv run python -m ai.lab rag-full
+uv pip install -r ai/requirements-training.txt
 make training-data
 make sft
 make dpo
@@ -331,8 +336,8 @@ make dpo
 
 - 실제 환자 데이터·의료진 평가·임상 정확도 검증을 사용하지 않았습니다.
 - EMA+Text 수치는 synthetic sanity check이며 우울증/PTSD 예측 성능이 아닙니다.
-- RAG 숫자는 작은 synthetic regression set의 CI smoke 결과입니다.
-- BGE-M3 + CrossEncoder full benchmark는 코드가 준비됐지만 아직 실행 결과를 기록하지 않았습니다.
+- RAG 숫자는 작은 synthetic regression set 결과이며 실제 검색 품질로 일반화하지 않습니다.
+- BGE-M3 + CrossEncoder full benchmark는 실제 실행했지만 현재 8-query 회귀셋에서 smoke hybrid보다 좋아지지 않아 미채택했습니다.
 - SFT/DPO는 파이프라인과 데이터 계약까지 구현됐고 GPU 학습 결과는 아직 없습니다.
 - LLM-as-a-Judge adapter는 구현했지만 V3 live evaluation은 아직 실행하지 않았습니다.
 - 실제 마이크·억양·배경 소음 환경의 최종 E2E 검증이 남아 있습니다.
