@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from dotenv import dotenv_values
+
 from ai.judge import anthropic_judge
 from app.config import Settings
 
@@ -40,14 +42,20 @@ CASES = [
 ]
 
 
+def _resolve_api_key(settings: Settings) -> str:
+    """For the local live check, prefer the repository .env over inherited shell state."""
+    env_file_key = str(dotenv_values(".env").get("ANTHROPIC_API_KEY") or "").strip()
+    if env_file_key:
+        return env_file_key
+    if settings.anthropic_api_key is None:
+        return ""
+    return settings.anthropic_api_key.get_secret_value().strip()
+
+
 def main() -> None:
     settings = Settings()
-    api_key = (
-        settings.anthropic_api_key.get_secret_value()
-        if settings.anthropic_api_key is not None
-        else ""
-    )
-    if not api_key.strip():
+    api_key = _resolve_api_key(settings)
+    if not api_key:
         raise RuntimeError("ANTHROPIC_API_KEY is required in .env or environment")
     model = settings.anthropic_model.strip() or "claude-sonnet-5"
 
