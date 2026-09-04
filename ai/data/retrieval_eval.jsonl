@@ -1,0 +1,8 @@
+{"query":"잠들기 오래 걸리고 아침 피로가 있다는 말을 기록할 때 어떤 정보를 확인해야 하나","relevant":["sleep_record","function_impact"]}
+{"query":"환자가 말한 내용과 의료진 관찰 내용을 어디에 나눠 적어야 하나","relevant":["speaker"]}
+{"query":"근거 번호가 없는 S O P 문장이 생성되면 어떻게 처리해야 하나","relevant":["evidence","review"]}
+{"query":"위험 신호가 발견된 상담을 자동 완료하지 않으려면","relevant":["safety_review","review"]}
+{"query":"전사 원문과 음성은 언제 삭제해야 하나","relevant":["privacy"]}
+{"query":"다음 방문에서 수면 기록을 다시 확인한다는 계획은 어디에 남기나","relevant":["followup_plan"]}
+{"query":"대화에 없는 약 복용 변경을 시스템이 만들어도 되나","relevant":["medication"]}
+{"query":"실제 환자정보 대신 포트폴리오에서 어떤 데이터를 써야 하나","relevant":["consent"]}
