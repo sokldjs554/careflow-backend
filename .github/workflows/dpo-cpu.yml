@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   dpo-gate:
-    name: Qwen2.5-0.5B resource-bounded DPO holdout gate
+    name: Qwen2.5-0.5B bounded single-step DPO holdout gate
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     env:
@@ -79,14 +79,17 @@ jobs:
           assert groups == expected, groups
           print({"train": len(train), "validation": len(valid), "validation_groups": groups})
           PY
-      - name: Train DPO from adopted SFT adapter on CPU
+      - name: Train one-step DPO from adopted SFT adapter on CPU
         run: >-
           uv run python -m ai.posttrain dpo
           --data ai/data/training/dpo.jsonl
           --model ai/adopted-sft/outputs/sft-adapter
           --output-dir ai/outputs/dpo-adapter
           --device cpu
-      - name: Compare adopted SFT versus DPO on held-out split
+          --max-train-samples 6
+          --max-steps 1
+          --max-length 128
+      - name: Compare adopted SFT versus DPO on full six-scenario holdout
         run: >-
           uv run python -m ai.model_eval
           --base ai/adopted-sft/outputs/sft-adapter
