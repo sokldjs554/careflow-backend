@@ -5,7 +5,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 from sqlalchemy import text
 
@@ -37,6 +37,35 @@ REQUEST_COUNT = Counter(
 REQUEST_LATENCY = Histogram(
     "careflow_http_request_seconds", "HTTP request latency", labelnames=("method", "path")
 )
+
+_DEMO_HTML_PATH = Path(__file__).parent / "static" / "index.html"
+
+
+def _provider_neutral_demo_html() -> str:
+    """Keep implementation-provider details out of the product-facing demo UI."""
+    html = _DEMO_HTML_PATH.read_text(encoding="utf-8")
+    replacements = {
+        "Claude / Whisper": "AI drafting / speech recognition",
+        "Claude 초안 생성": "AI 초안 생성",
+        "Claude 초안이 여기에 표시됩니다.": "AI 초안이 여기에 표시됩니다.",
+        '$("runtime-text").textContent = `${cap.note_generator_version} · ${cap.speech_recognizer_version || "STT off"}`;': (
+            '$("runtime-text").textContent = cap.speech_enabled ? '
+            '"AI drafting · speech ready" : "AI drafting · text only";'
+        ),
+        '$("metric-runtime").textContent = cap.note_generator_version.replace("anthropic-", "").replace("-sop-v1", "");': (
+            '$("metric-runtime").textContent = "AI drafting";'
+        ),
+        '$("metric-runtime-sub").textContent = cap.speech_recognizer_version || "STT disabled";': (
+            '$("metric-runtime-sub").textContent = cap.speech_enabled ? '
+            '"Speech recognition enabled" : "Speech recognition disabled";'
+        ),
+        '$("draft-version").textContent = `${draft.generator_version} · ${formatTime(draft.generated_at)}`;': (
+            '$("draft-version").textContent = `AI draft · ${formatTime(draft.generated_at)}`;'
+        ),
+    }
+    for source, target in replacements.items():
+        html = html.replace(source, target)
+    return html
 
 
 def _generator(settings: Settings) -> NoteGenerator:
@@ -167,9 +196,9 @@ def create_app(
     async def metrics() -> Response:
         return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
-    @app.get("/", include_in_schema=False)
-    async def demo() -> FileResponse:
-        return FileResponse(Path(__file__).parent / "static" / "index.html")
+    @app.get("/", include_in_schema=False, response_class=HTMLResponse)
+    async def demo() -> HTMLResponse:
+        return HTMLResponse(_provider_neutral_demo_html())
 
     app.include_router(api_router)
     app.include_router(websocket_router)
