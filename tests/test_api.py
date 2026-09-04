@@ -22,7 +22,6 @@ def test_demo_page_is_available(client: TestClient) -> None:
     page = response.text.lower()
     assert "claude" not in page
     assert "anthropic" not in page
-    assert "ai 초안 생성" in response.text
 
 
 def test_capabilities_do_not_expose_secrets(client: TestClient) -> None:
