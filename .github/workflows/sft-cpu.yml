@@ -1,0 +1,45 @@
+name: SFT CPU Experiment
+
+on:
+  push:
+    branches:
+      - careflow-v3-jobfit
+    paths:
+      - .github/workflows/sft-cpu.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sft:
+    name: Qwen2.5-0.5B LoRA SFT + holdout gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      HF_HUB_DISABLE_TELEMETRY: "1"
+      TOKENIZERS_PARALLELISM: "false"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+      - name: Install Python and CPU post-training stack
+        run: |
+          uv python install 3.12
+          uv sync --locked --extra dev
+          uv pip install torch --index-url https://download.pytorch.org/whl/cpu
+          uv pip install -r ai/requirements-posttrain-cpu.txt
+      - name: Generate reviewed synthetic SFT and DPO contracts
+        run: uv run python -m ai.posttrain generate --count 120
+      - name: Train Qwen2.5 0.5B LoRA on CPU
+        run: >-
+          uv run python -m ai.posttrain sft
+          --model Qwen/Qwen2.5-0.5B-Instruct
+          --device cpu
+          --no-merge
+      - name: Compare base versus SFT on held-out split
+        run: >-
+          uv run python -m ai.posttrain compare-sft
+          --base Qwen/Qwen2.5-0.5B-Instruct
+          --candidate ai/outputs/sft-adapter
+          --output ai/results/sft-comparison.json
