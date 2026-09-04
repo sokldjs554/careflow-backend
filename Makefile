@@ -1,4 +1,4 @@
-.PHONY: sync test lint typecheck verify benchmark live-claude run run-live
+.PHONY: sync test lint typecheck verify benchmark live-claude run run-live ai-sync ai-test ai-verify rag-bench multimodal-bench eval-bench training-data sft dpo
 
 sync:
 	uv sync --locked --extra dev --extra speech
@@ -25,3 +25,29 @@ run:
 
 run-live:
 	NOTE_GENERATOR_MODE=anthropic SPEECH_RECOGNITION_MODE=faster_whisper uv run uvicorn app.main:app --host 0.0.0.0 --reload --port 8000
+
+ai-sync:
+	uv pip install -r ai/requirements-smoke.txt
+
+ai-test:
+	uv run pytest -q ai/tests
+
+rag-bench:
+	uv run python -m ai.lab rag
+
+multimodal-bench:
+	uv run python -m ai.lab multimodal
+
+eval-bench:
+	uv run python -m ai.lab evaluation
+
+training-data:
+	uv run python -m ai.posttrain generate --count 120
+
+sft:
+	uv run python -m ai.posttrain sft
+
+dpo:
+	uv run python -m ai.posttrain dpo
+
+ai-verify: ai-test rag-bench multimodal-bench eval-bench training-data
