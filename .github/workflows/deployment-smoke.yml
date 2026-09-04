@@ -68,8 +68,8 @@ jobs:
               "Review Queue",
               "AI Quality",
               "Operations",
-              "Evidence Coverage",
-              "Data Lifecycle",
+              "Evidence coverage",
+              "Data lifecycle",
               "Post-training selection path",
               "전체 흐름 자동 시연",
               "발화 수집",
@@ -90,8 +90,8 @@ jobs:
           print("product shell contract verified")
           PY
 
-      - name: Upload UI diagnostics
-        if: always()
+      - name: Upload UI diagnostics on failure
+        if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: deployment-smoke-ui
