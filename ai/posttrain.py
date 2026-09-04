@@ -445,12 +445,17 @@ def train_dpo(
     model_name: str,
     output_dir: Path,
     device: str = "auto",
+    max_train_samples: int | None = None,
+    max_steps: int = -1,
+    max_length: int = 256,
 ) -> None:
     import torch
     from datasets import Dataset
     from trl import DPOConfig, DPOTrainer
 
     train_rows = _load_split(data, "train")
+    if max_train_samples is not None:
+        train_rows = train_rows[:max_train_samples]
     valid_rows = _load_split(data, "validation")
     use_cuda = device != "cpu" and torch.cuda.is_available()
     if device == "cuda" and not use_cuda:
@@ -459,7 +464,6 @@ def train_dpo(
     training_model = model_name
     model_path = Path(model_name)
     adapter_config = model_path / "adapter_config.json"
-    merged_dir: Path | None = None
     if model_path.exists() and adapter_config.exists():
         from peft import AutoPeftModelForCausalLM, PeftConfig
         from transformers import AutoTokenizer
@@ -482,15 +486,15 @@ def train_dpo(
     args = DPOConfig(
         output_dir=str(output_dir),
         num_train_epochs=1,
+        max_steps=max_steps,
         learning_rate=5e-6,
         per_device_train_batch_size=1 if not use_cuda else 2,
         per_device_eval_batch_size=1 if not use_cuda else 2,
-        gradient_accumulation_steps=8,
+        gradient_accumulation_steps=1,
         beta=0.1,
-        eval_strategy="epoch",
-        save_strategy="epoch",
-        save_total_limit=1,
-        max_length=256,
+        eval_strategy="no",
+        save_strategy="no",
+        max_length=max_length,
         use_cpu=not use_cuda,
         report_to="none",
         seed=42,
@@ -513,6 +517,9 @@ def train_dpo(
                 "source_model": model_name,
                 "training_model": training_model,
                 "adapter": str(output_dir),
+                "train_samples": len(train_rows),
+                "max_steps": max_steps,
+                "max_length": max_length,
                 "train_loss": round(float(train_result.training_loss), 6),
             },
             ensure_ascii=False,
@@ -562,6 +569,9 @@ def main() -> None:
         "--output-dir", type=Path, default=Path("ai/outputs/dpo-adapter")
     )
     dpo_parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
+    dpo_parser.add_argument("--max-train-samples", type=int, default=None)
+    dpo_parser.add_argument("--max-steps", type=int, default=-1)
+    dpo_parser.add_argument("--max-length", type=int, default=256)
 
     args = parser.parse_args()
     if args.command == "generate":
@@ -577,7 +587,15 @@ def main() -> None:
     elif args.command == "compare-sft":
         compare_sft(args.base, args.candidate, args.data, args.output)
     else:
-        train_dpo(args.data, args.model, args.output_dir, device=args.device)
+        train_dpo(
+            args.data,
+            args.model,
+            args.output_dir,
+            device=args.device,
+            max_train_samples=args.max_train_samples,
+            max_steps=args.max_steps,
+            max_length=args.max_length,
+        )
 
 
 if __name__ == "__main__":
