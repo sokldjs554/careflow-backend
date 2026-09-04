@@ -19,6 +19,10 @@ def test_demo_page_is_available(client: TestClient) -> None:
     assert response.status_code == 200
     assert "CareFlow" in response.text
     assert "합성·비식별 데이터" in response.text
+    page = response.text.lower()
+    assert "claude" not in page
+    assert "anthropic" not in page
+    assert "ai 초안 생성" in response.text
 
 
 def test_capabilities_do_not_expose_secrets(client: TestClient) -> None:
