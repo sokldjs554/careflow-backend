@@ -1,0 +1,116 @@
+name: DPO CPU Gate
+
+on:
+  push:
+    branches:
+      - careflow-v3-jobfit
+    paths:
+      - .github/workflows/dpo-cpu.yml
+      - ai/posttrain.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  dpo-gate:
+    name: Qwen2.5-0.5B resource-bounded DPO holdout gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      HF_HUB_DISABLE_TELEMETRY: "1"
+      TOKENIZERS_PARALLELISM: "false"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Restore adopted SFT gate artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: qwen25-sft-gate
+          path: ai/adopted-sft
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: sokldjs554/careflow-backend
+          run-id: 33871611848
+      - name: Verify upstream SFT gate was adopted
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          result = json.loads(
+              Path("ai/adopted-sft/results/sft-comparison.json").read_text(encoding="utf-8")
+          )
+          assert result["decision"] == "adopt", result
+          adapter = Path("ai/adopted-sft/outputs/sft-adapter/adapter_config.json")
+          assert adapter.exists(), adapter
+          print({
+              "decision": result["decision"],
+              "delta_reference_token_f1": result["delta_reference_token_f1"],
+              "adapter": str(adapter.parent),
+          })
+          PY
+      - name: Install uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+      - name: Install Python and CPU post-training stack
+        run: |
+          uv python install 3.12
+          uv sync --locked --extra dev
+          uv pip install torch --index-url https://download.pytorch.org/whl/cpu
+          uv pip install -r ai/requirements-posttrain-cpu.txt
+      - name: Generate matching resource-bounded DPO preference contracts
+        run: uv run python -m ai.posttrain generate --count 30
+      - name: Verify DPO train and holdout coverage
+        run: |
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          rows = [
+              json.loads(line)
+              for line in Path("ai/data/training/dpo.jsonl").read_text(encoding="utf-8").splitlines()
+              if line.strip()
+          ]
+          train = [row for row in rows if row["split"] == "train"]
+          valid = [row for row in rows if row["split"] == "validation"]
+          groups = sorted({row["scenario_group"] for row in valid})
+          expected = [f"scenario-{idx:02d}" for idx in range(6)]
+          assert len(train) == 24, len(train)
+          assert len(valid) == 6, len(valid)
+          assert groups == expected, groups
+          print({"train": len(train), "validation": len(valid), "validation_groups": groups})
+          PY
+      - name: Train DPO from adopted SFT adapter on CPU
+        run: >-
+          uv run python -m ai.posttrain dpo
+          --data ai/data/training/dpo.jsonl
+          --model ai/adopted-sft/outputs/sft-adapter
+          --output-dir ai/outputs/dpo-adapter
+          --device cpu
+      - name: Compare adopted SFT versus DPO on held-out split
+        run: >-
+          uv run python -m ai.model_eval
+          --base ai/adopted-sft/outputs/sft-adapter
+          --candidate ai/outputs/dpo-adapter
+          --data ai/data/training/sft.jsonl
+          --output ai/results/dpo-comparison.json
+          --max-samples 6
+          --max-new-tokens 64
+          --min-f1-gain 0.0
+      - name: Print DPO gate decision
+        if: always()
+        shell: bash
+        run: |
+          echo '--- DPO comparison ---'
+          test -f ai/results/dpo-comparison.json && cat ai/results/dpo-comparison.json || true
+      - name: Preserve DPO adapter and gate evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: qwen25-dpo-gate
+          path: |
+            ai/outputs/dpo-adapter
+            ai/results/dpo-comparison.json
+            ai/data/training/dpo.jsonl
+            ai/data/training/sft.jsonl
+          if-no-files-found: ignore
+          retention-days: 3
