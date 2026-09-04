@@ -1,0 +1,9 @@
+-r requirements-smoke.txt
+torch>=2.5
+transformers>=4.56
+datasets>=4
+peft>=0.17
+trl>=0.21
+accelerate>=1.10
+sentence-transformers>=5
+bitsandbytes>=0.47; platform_system == "Linux"
