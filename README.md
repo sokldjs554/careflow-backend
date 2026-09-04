@@ -12,7 +12,7 @@ V2에서는 기존의 기능 확인용 화면을 **실제 검토 업무를 설�
 
 - 최근 세션 목록과 `created / streaming / review_required / ready / purged` 상태를 한 화면에서 확인
 - 정상·근거 공백·sequence gap·safety signal·중복 재전송 시나리오 재현
-- WebSocket text, 브라우저 마이크, 오디오 파일 업로드를 같은 세션 상태 머신으로 처리
+- WebSocket text와 브라우저 마이크를 같은 세션 상태 머신으로 처리; 오디오 파일 입력은 테스트용 경로로만 유지
 - S/O/P의 `evidence sequence`를 누르면 해당 transcript 발화를 강조
 - `review_required` 초안을 직접 수정하고 저장하거나 승인 가능
 - 검토가 필요한 전사 원문은 Redis TTL 동안만 유지하고 **사람 승인 시 삭제**
@@ -25,21 +25,21 @@ V2에서는 기존의 기능 확인용 화면을 **실제 검토 업무를 설�
 | 영역 | 구현 상태 | 검증 경계 |
 | --- | --- | --- |
 | 실시간 세션 | REST + WebSocket text/binary, sequence dedup, Idempotency-Key | 텍스트 전체 경로 실검증; 실제 장시간 연결·수평 확장은 미검증 |
-| 음성 인식 | 브라우저 MediaRecorder / 오디오 파일 → `faster-whisper` | 한국어 합성 TTS 3건에서 정규화 CER 1/70(1.43%); 실제 마이크·소음 환경은 별도 검증 필요 |
+| 음성 인식 | 브라우저 MediaRecorder → `faster-whisper` (테스트용 파일 입력 경로 별도) | 한국어 합성 TTS 3건에서 정규화 CER 1/70(1.43%); 실제 마이크·소음 환경은 별도 검증 필요 |
 | AI 초안 | Anthropic native Messages API + JSON Schema + Pydantic | 합성 대화 1건 실제 Claude 구조·근거 계약 확인; 임상 품질 일반화는 아님 |
 | Evidence | S/O/P별 source sequence 저장 + UI 클릭 추적 | 존재하지 않는 근거·근거 공백은 자동 완료하지 않고 검토 전환 |
 | Human review | 초안 수정 저장 / 승인, review queue | 승인 시 review reason 제거, `ready` 전환, TTL 원문 삭제 계약 테스트 |
 | 데이터 수명주기 | 음성 비저장, 전사 Redis TTL, 파생 초안 PostgreSQL | 정상 완료는 즉시 purge; 검토 필요는 TTL 내 보존 후 승인 시 purge |
 | 영속화 | PostgreSQL + async SQLAlchemy + Alembic, Redis Hash+TTL | GitHub Actions에서 PostgreSQL 16 migration + Redis 7 실제 서비스 계약 통과 |
 | 운영·관측성 | liveness/readiness, Prometheus, request ID, audit timeline, operations snapshot | 운영 트래픽·장애 복구·장기 부하는 미검증 |
-| CI·컨테이너 | lint, mypy, pytest, SQLite migration, Postgres/Redis integration, Docker build | CareFlow V2 PR CI #9의 3개 job 모두 성공 |
+| CI·컨테이너 | lint, mypy, pytest, SQLite migration, Postgres/Redis integration, Docker build | main merge CI #26의 3개 job 모두 성공 |
 | AWS | ECS·ALB·RDS·ElastiCache Terraform 시작점 | 실제 AWS 계정에는 배포하지 않음 |
 
 ## 데이터 수명주기
 
 ```mermaid
 flowchart TD
-    A[브라우저 마이크 / 오디오 파일 / WS text] --> B[FastAPI + WebSocket]
+    A[브라우저 마이크 / WS text] --> B[FastAPI + WebSocket]
     B --> C[faster-whisper 전사]
     C --> D[Redis TTL transcript]
     D --> E[Claude S/O/P structured output]
@@ -190,12 +190,12 @@ make run-live
 
 Claude 비용 없이 회귀 테스트용 기준선만 실행하려면 `NOTE_GENERATOR_MODE=deterministic`을 사용합니다. 이 모드는 실제 LLM 문맥 요약을 대신하지 않습니다.
 
-## Codespaces에서 V2 확인
+## Codespaces에서 main V2 확인
 
 ```bash
 git fetch origin
-git switch careflow-v2
-git pull --ff-only origin careflow-v2
+git switch main
+git pull --ff-only origin main
 uv sync --locked --extra dev --extra speech
 make run-live
 ```
@@ -205,7 +205,7 @@ Ports 탭의 `8000`을 브라우저에서 열고 포트 공개 범위는 Private
 권장 데모 순서:
 
 1. `정상 상담` → `시나리오 실행`
-2. `Claude 초안 생성`
+2. `AI 초안 생성`
 3. S/O/P evidence `#번호`를 눌러 transcript highlight 확인
 4. `Safety signal` 시나리오를 새로 실행
 5. `review_required`와 transcript TTL 유지 확인
@@ -248,7 +248,7 @@ uv run pytest -m "not integration"
 DATABASE_URL=sqlite+aiosqlite:///./release-check.db uv run alembic upgrade head
 ```
 
-2026-09-04 CareFlow V2 PR 기준:
+2026-09-04 CareFlow V2 main merge 기준:
 
 | 검증 | 결과 |
 | --- | --- |
@@ -258,7 +258,7 @@ DATABASE_URL=sqlite+aiosqlite:///./release-check.db uv run alembic upgrade head
 | SQLite migration | 성공 |
 | PostgreSQL 16 + Redis 7 | 실제 service-container integration 성공 |
 | Docker image | runtime image build 성공 |
-| GitHub Actions | V2 PR CI #9의 3개 job 모두 성공 |
+| GitHub Actions | main merge CI #26의 3개 job 모두 성공 |
 | 한국어 STT 소표본 | 합성 TTS 3건, 정규화 CER 1/70 = 1.43% |
 | Claude 실호출 | 합성 대화 1건의 S/O/P + evidence contract 확인 |
 | 텍스트 E2E | Codespaces WebSocket text → Claude → draft → purge 확인 |
