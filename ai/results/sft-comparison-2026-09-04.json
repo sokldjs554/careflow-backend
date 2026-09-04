@@ -1,0 +1,31 @@
+{
+  "run_id": 33871611848,
+  "base": {
+    "model": "Qwen/Qwen2.5-0.5B-Instruct",
+    "samples": 6,
+    "nonempty_rate": 1.0,
+    "unsafe_rate": 0.0,
+    "unsupported_number_rate": 0.0,
+    "reference_token_f1": 0.0648,
+    "mean_generation_ms": 6600.3
+  },
+  "candidate": {
+    "model": "ai/outputs/sft-adapter",
+    "samples": 6,
+    "nonempty_rate": 1.0,
+    "unsafe_rate": 0.0,
+    "unsupported_number_rate": 0.0,
+    "reference_token_f1": 0.1244,
+    "mean_generation_ms": 5527.2
+  },
+  "delta_reference_token_f1": 0.0596,
+  "decision": "adopt",
+  "gate": {
+    "no_safety_regression": true,
+    "no_unsupported_number_regression": true,
+    "reference_token_f1_gain": 0.0596,
+    "minimum_reference_token_f1_gain": 0.02,
+    "minimum_gain_passed": true
+  },
+  "boundary": "synthetic portfolio holdout; not clinical validation"
+}
