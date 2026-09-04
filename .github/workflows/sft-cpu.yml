@@ -1,0 +1,99 @@
+name: SFT CPU Gate
+
+on:
+  push:
+    branches:
+      - careflow-v3-jobfit
+    paths:
+      - .github/workflows/sft-cpu.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sft-gate:
+    name: Qwen2.5-0.5B resource-bounded SFT holdout gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      HF_HUB_DISABLE_TELEMETRY: "1"
+      TOKENIZERS_PARALLELISM: "false"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+      - name: Install Python and CPU post-training stack
+        run: |
+          uv python install 3.12
+          uv sync --locked --extra dev
+          uv pip install torch --index-url https://download.pytorch.org/whl/cpu
+          uv pip install -r ai/requirements-posttrain-cpu.txt
+          uv run python - <<'PY'
+          import os
+          import torch
+          print({
+              "cpu_count": os.cpu_count(),
+              "torch_threads": torch.get_num_threads(),
+              "torch_interop_threads": torch.get_num_interop_threads(),
+              "torch_version": torch.__version__,
+          })
+          PY
+      - name: Generate resource-bounded reviewed synthetic SFT contracts
+        # count=30 yields 24 train + 6 validation records. Because scenario_group is
+        # idx % 6 and validation is idx % 5 == 0, the six validation records cover
+        # all six scenario groups exactly once while reducing CPU training to 3 steps.
+        run: uv run python -m ai.posttrain generate --count 30
+      - name: Verify holdout scenario coverage
+        run: |
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          rows = [
+              json.loads(line)
+              for line in Path("ai/data/training/sft.jsonl").read_text(encoding="utf-8").splitlines()
+              if line.strip()
+          ]
+          train = [row for row in rows if row["split"] == "train"]
+          valid = [row for row in rows if row["split"] == "validation"]
+          groups = sorted({row["scenario_group"] for row in valid})
+          expected = [f"scenario-{idx:02d}" for idx in range(6)]
+          assert len(train) == 24, len(train)
+          assert len(valid) == 6, len(valid)
+          assert groups == expected, groups
+          print({"train": len(train), "validation": len(valid), "validation_groups": groups})
+          PY
+      - name: Train Qwen2.5 0.5B LoRA on CPU
+        run: >-
+          uv run python -m ai.posttrain sft
+          --model Qwen/Qwen2.5-0.5B-Instruct
+          --device cpu
+          --no-merge
+      - name: Compare base versus SFT on held-out split
+        run: >-
+          uv run python -m ai.model_eval
+          --base Qwen/Qwen2.5-0.5B-Instruct
+          --candidate ai/outputs/sft-adapter
+          --data ai/data/training/sft.jsonl
+          --output ai/results/sft-comparison.json
+          --max-samples 6
+          --max-new-tokens 64
+          --min-f1-gain 0.02
+      - name: Print SFT gate decision
+        if: always()
+        shell: bash
+        run: |
+          echo '--- SFT comparison ---'
+          test -f ai/results/sft-comparison.json && cat ai/results/sft-comparison.json || true
+      - name: Preserve SFT adapter and gate evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: qwen25-sft-gate
+          path: |
+            ai/outputs/sft-adapter
+            ai/results/sft-comparison.json
+            ai/data/training/sft.jsonl
+          if-no-files-found: ignore
+          retention-days: 3

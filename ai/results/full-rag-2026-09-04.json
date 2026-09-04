@@ -1,0 +1,27 @@
+{
+  "date": "2026-09-04",
+  "workflow": "Full RAG Benchmark",
+  "run_id": 33839963182,
+  "dataset_boundary": {
+    "knowledge_documents": 12,
+    "retrieval_queries": 8,
+    "data": "synthetic regression set",
+    "clinical_claim": false
+  },
+  "models": {
+    "embedding": "BAAI/bge-m3",
+    "reranker": "BAAI/bge-reranker-v2-m3"
+  },
+  "full_semantic": {
+    "recall@5": 0.9375,
+    "mrr": 1.0,
+    "ndcg@5": 0.9416
+  },
+  "ci_smoke_hybrid_baseline": {
+    "recall@5": 1.0,
+    "mrr": 1.0,
+    "ndcg@5": 0.9746
+  },
+  "decision": "not_adopted_on_current_regression_set",
+  "reason": "The full BGE-M3 + CrossEncoder pipeline did not improve the current small synthetic regression set: Recall@5 and nDCG@5 were lower while MRR was unchanged. Keep the adapter as an experiment path and re-evaluate on a larger permitted dataset before adoption."
+}

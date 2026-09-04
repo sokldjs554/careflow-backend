@@ -1,0 +1,5 @@
+numpy>=2.0,<3
+scipy>=1.13,<2
+scikit-learn>=1.6,<2
+qdrant-client>=1.14,<2
+langgraph>=1.0,<2

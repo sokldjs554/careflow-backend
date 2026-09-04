@@ -1,0 +1,12 @@
+{"doc_id":"sleep_record","title":"수면 호소 기록 체크","text":"수면 관련 불편을 기록할 때는 최근 변화 시점, 잠들기까지 걸린 시간, 중간 각성, 아침 피로, 일상 기능 영향을 원문 근거와 함께 구분해 기록한다.","source":"synthetic-guidance"}
+{"doc_id":"function_impact","title":"일상 기능 영향 기록","text":"업무, 학업, 대인관계, 자기관리 등 일상 기능에 어떤 변화가 있었는지 환자 진술과 관찰 정보를 섞지 않고 별도 근거로 남긴다.","source":"synthetic-guidance"}
+{"doc_id":"followup_plan","title":"추적 계획 기록","text":"다음 방문에서 확인할 항목, 기록표 확인 여부, 추가 평가 계획은 Plan에 구체적으로 적되 진단이나 치료 결정을 자동 생성하지 않는다.","source":"synthetic-guidance"}
+{"doc_id":"safety_review","title":"안전 신호 검토 원칙","text":"위험 신호가 감지되면 자동 판단으로 종료하지 않고 사람 검토 상태로 전환하며 원문 근거를 삭제하지 않은 채 제한된 TTL 동안 보존한다.","source":"synthetic-guidance"}
+{"doc_id":"privacy","title":"전사 원문 삭제와 데이터 수명주기","text":"전사 원문은 언제 삭제해야 하는지 상태에 따라 결정한다. 원본 음성은 영속 저장하지 않고 전사는 짧은 TTL로 보관한다. 정상 완료 시 즉시 삭제하고 사람 검토가 필요한 경우 승인 시 삭제한다.","source":"synthetic-guidance"}
+{"doc_id":"evidence","title":"근거 추적 규칙","text":"S/O/P 각 문장은 실제 transcript sequence를 근거로 가져야 하며 존재하지 않는 sequence, 근거 공백, 원문에 없는 수치가 있으면 자동 완료하지 않는다.","source":"synthetic-guidance"}
+{"doc_id":"speaker","title":"환자 진술과 관찰 분리","text":"환자 본인의 경험은 Subjective에, 의료진이 대화 중 직접 관찰한 내용은 Objective에 기록해 출처와 성격을 분리한다.","source":"synthetic-guidance"}
+{"doc_id":"medication","title":"약물 관련 기록 경계","text":"약물 변경이나 복용 관련 내용은 실제 대화에서 확인된 사실만 기록하며 시스템이 임의로 처방 변경이나 복용 지시를 생성하지 않는다.","source":"synthetic-guidance"}
+{"doc_id":"trauma","title":"민감한 과거력 기록","text":"민감한 과거력은 대화에 명시된 범위에서만 기록하고 추론으로 보완하지 않는다. 불명확하면 추가 확인이 필요함을 표시한다.","source":"synthetic-guidance"}
+{"doc_id":"substance","title":"물질 사용 정보 기록","text":"음주나 기타 물질 사용 정보는 빈도, 시점, 환자 진술 여부를 구분해 기록하고 확인되지 않은 사용을 추정하지 않는다.","source":"synthetic-guidance"}
+{"doc_id":"consent","title":"비식별 데모 데이터 원칙","text":"포트폴리오와 모델 평가에는 합성 또는 비식별 데이터만 사용하고 실제 진료정보를 외부 모델로 전송했다고 주장하지 않는다.","source":"synthetic-guidance"}
+{"doc_id":"review","title":"Human-in-the-loop 승인","text":"review_required 초안은 사람이 근거를 확인하고 수정할 수 있어야 하며 승인 이벤트 이후에만 ready 상태와 원문 purge를 수행한다.","source":"synthetic-guidance"}

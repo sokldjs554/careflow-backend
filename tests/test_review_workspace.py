@@ -101,3 +101,13 @@ def test_session_dashboard_and_operations_endpoints(
     assert body["session_counts"]["created"] == 1
     assert body["review_queue"] == 0
     assert body["transcript_ttl_seconds"] == 300
+
+
+def test_demo_clears_browser_transcript_after_server_purge(client: TestClient) -> None:
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert (
+        "if(result.transcript_purged){state.transcript=[];renderTranscript()}"
+        in response.text
+    )
