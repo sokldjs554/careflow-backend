@@ -1,0 +1,23 @@
+{
+  "status": "success",
+  "generator_version": "anthropic-claude-sonnet-5-sop-v1",
+  "latency_ms": 5217.679,
+  "subjective": "최근 일주일 동안 잠드는 데 한 시간쯤 걸렸고, 아침에 피곤해서 업무에 집중하기 어려웠다고 진술함.",
+  "objective": "대화 중 환자의 말투와 호흡은 차분하게 관찰됨.",
+  "plan": "다음 주에 수면 기록을 함께 확인할 계획.",
+  "evidence": [
+    {
+      "section": "subjective",
+      "source_sequences": [1, 2]
+    },
+    {
+      "section": "objective",
+      "source_sequences": [3]
+    },
+    {
+      "section": "plan",
+      "source_sequences": [4]
+    }
+  ],
+  "boundary": "single synthetic live API contract check; not clinical validation"
+}
