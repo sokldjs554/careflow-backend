@@ -27,7 +27,9 @@ def _failure_summary(exc: DraftGenerationError) -> dict[str, object]:
         except (ValueError, TypeError):
             pass
     elif isinstance(cause, httpx.TimeoutException):
-        summary["hint"] = "request timed out; structured-output cold start can need a longer timeout"
+        summary["hint"] = (
+            "request timed out; structured-output cold start can need a longer timeout"
+        )
     return summary
 
 
