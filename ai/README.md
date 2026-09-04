@@ -2,20 +2,20 @@
 
 제품 경로(`app/`)와 분리된 **실험·평가 트랙**입니다. 핵심 원칙은 `구현했다`와 `성능이 좋아서 채택했다`를 구분하는 것입니다.
 
-## 현재 상태
+## 최종 상태
 
-| 트랙 | 구현 | 현재 검증 | 다음 게이트 |
+| 트랙 | 구현 | 검증 | 결정 |
 | --- | --- | --- | --- |
-| RAG | Qdrant + lexical + RRF + BGE-M3 + CrossEncoder + LangGraph | smoke + full semantic 실제 실행 | 더 큰 허용 데이터에서 재평가 |
-| Multimodal | EMA + Text late fusion baseline | 합성 데이터 sanity check 완료 | 허용된 실제/공개 데이터에서 재평가 |
-| SFT | Qwen2.5 LoRA/QLoRA pipeline | Qwen2.5-0.5B CPU LoRA 1 epoch 실제 학습 완료 | corrected Base vs SFT holdout gate 재실행 중 |
-| DPO | chosen/rejected + DPOTrainer pipeline | 데이터 계약 120쌍 통과 | SFT가 게이트를 넘은 경우에만 학습 |
-| Evaluation | rule gate + Claude Sonnet 5 LLM-as-a-Judge | CI rule gate + live synthetic 6건 실제 실행 | 더 큰 허용 평가셋/전문가 평가 시 재검증 |
-| Live generation | Claude Sonnet 5 S/O/P structured generator | 합성 1건 실제 API 생성 + evidence contract 통과 | UI E2E 정상 세션 재검증 |
+| RAG | Qdrant + lexical + RRF + BGE-M3 + CrossEncoder + LangGraph | smoke + full semantic 실제 실행 | 현재 synthetic 회귀셋에서는 full semantic 미채택 |
+| Multimodal | EMA + Text late fusion baseline | synthetic sanity check | 파이프라인 검증 완료, 임상 성능 미주장 |
+| SFT | Qwen2.5 LoRA/QLoRA | resource-bounded CPU holdout gate | **adopt** |
+| DPO | chosen/rejected + DPOTrainer | bounded one-step CPU holdout gate | **reject** |
+| Evaluation | deterministic rule gate + Claude Sonnet 5 Judge | CI + live synthetic 6건 | 정상/실패 예제 구분 확인 |
+| Live generation | Claude Sonnet 5 S/O/P structured generator | synthetic live contract + UI text E2E | 확인 완료 |
 
-## 검색 실험 — 2026-09-04
+## RAG
 
-합성·비식별 소표본의 **파이프라인 회귀 검증값**이며 실서비스나 임상 성능이 아닙니다.
+같은 8-query synthetic holdout에서 비교했습니다.
 
 | 방식 | Recall@5 | MRR | nDCG@5 |
 | --- | ---: | ---: | ---: |
@@ -24,9 +24,9 @@
 | **hybrid + smoke rerank** | **1.0000** | **1.0000** | **0.9746** |
 | BGE-M3 + CrossEncoder | 0.9375 | **1.0000** | 0.9416 |
 
-`BAAI/bge-m3`와 `BAAI/bge-reranker-v2-m3`를 실제로 다운로드해 동일 8-query holdout에서 실행했습니다. 이 작은 데이터에서는 full semantic 경로가 smoke hybrid보다 Recall@5 `-0.0625`, nDCG@5 `-0.0330` 낮았고 MRR은 동일했습니다. 따라서 **현재는 미채택**입니다. 모델 adapter와 재현 경로는 유지하고 더 큰 허용 데이터에서 다시 평가합니다.
+실제 `BAAI/bge-m3`와 `BAAI/bge-reranker-v2-m3`를 다운로드해 실행했지만 현재 작은 regression set에서는 smoke hybrid보다 Recall@5와 nDCG@5가 낮아 미채택입니다.
 
-원시 결과: [`results/full-rag-2026-09-04.json`](results/full-rag-2026-09-04.json)
+결과: [`results/full-rag-2026-09-04.json`](results/full-rag-2026-09-04.json)
 
 ## EMA + Text synthetic fusion
 
@@ -36,124 +36,56 @@
 | Text only | 0.6355 | 0.5299 | 0.2332 |
 | **Fusion** | **0.7408** | **0.6154** | **0.2027** |
 
-이 결과는 `EMA와 Text를 함께 쓰는 학습·평가 파이프라인이 실제로 작동하는지`만 확인합니다. 질환 예측 성능으로 해석하지 않습니다.
-
-## 실험 순서
-
-```text
-RAG smoke ──→ BGE-M3 + CrossEncoder benchmark ──→ adopt / reject
-
-Multimodal synthetic baseline
-    └─→ permitted real/public data ──→ EMA / Text / Fusion same holdout
-
-SFT data gate ──→ LoRA/QLoRA SFT ──→ Base vs SFT same holdout
-                                └─→ pass only ──→ DPO ──→ re-eval
-
-Generation ──→ rule gate ──→ LLM-as-a-Judge ──→ human/clinical review if available
-```
-
-## RAG
-
-CI에서는 모델 다운로드 없이 구조를 검증하기 위해 deterministic hashing embedding을 사용합니다. 실제 포트폴리오 실험용 경로는 `SentenceTransformerEmbedder`와 `CrossEncoderReranker`로 분리했습니다.
-
-```bash
-uv pip install -r ai/requirements-rag-full.txt
-uv run python -m ai.lab rag-full
-```
-
-기본 full 모델:
-
-- embedding: `BAAI/bge-m3`
-- reranker: `BAAI/bge-reranker-v2-m3`
-- Vector DB: Qdrant
-- workflow: LangGraph
-- metric: Recall@5 / MRR / nDCG@5
-
-RAG는 **S/O/P 원문 기록에 자동 주입하지 않습니다.** 상담 기록은 transcript evidence에 묶고, 외부 지식 검색은 별도 참고 경로로 분리해 원문에 없는 의료 사실이 차팅에 섞이는 위험을 줄입니다.
+이 값은 합성 데이터에서 학습·평가 경로가 작동하는지 확인한 sanity check이며 질환 예측 성능으로 해석하지 않습니다.
 
 ## SFT / DPO
 
-데이터는 `prompt`, `completion` 또는 `chosen/rejected` 계약으로 생성하고 train/validation 중복과 chosen 안전 문구를 먼저 검사합니다.
+기본 모델: `Qwen/Qwen2.5-0.5B-Instruct`
 
-```bash
-uv run python -m ai.posttrain generate --count 120
-uv pip install -r ai/requirements-training.txt
-uv run python -m ai.posttrain sft
-uv run python -m ai.posttrain dpo --model ai/outputs/sft-merged
-```
+데이터 생성 시 `prompt`, `completion`, `chosen/rejected` 계약을 사용하고 duplicate, split leakage, unsafe chosen을 검사합니다.
 
-기본 재현 모델은 `Qwen/Qwen2.5-0.5B-Instruct`입니다.
+### SFT — adopt
 
-### 실제 SFT 첫 실행
+GitHub Actions run `33871611848`에서 24 train / 6 validation resource-bounded CPU LoRA gate를 완료했습니다. validation 6건은 6개 scenario group을 하나씩 포함합니다.
 
-GitHub Actions CPU runner에서 120개 계약 중 **96 train / 24 validation**, 1 epoch LoRA 학습을 실제로 실행했습니다.
+| 지표 | Base | SFT |
+| --- | ---: | ---: |
+| reference-token F1 | 0.0648 | **0.1244** |
+| unsafe rate | 0.0000 | **0.0000** |
+| unsupported-number rate | 0.0000 | **0.0000** |
+| mean generation | 6600.3 ms | **5527.2 ms** |
 
-- mode: `lora-cpu`
-- train loss: `2.465941`
-- eval loss: `2.168`
-- eval mean token accuracy: `0.5569`
-- train runtime: 약 `1132s`
+F1 delta는 `+0.0596`으로 최소 기준 `+0.02`를 넘었고 안전성 및 unsupported-number 회귀도 없어 **adopt**했습니다.
 
-이 수치만으로 SFT 개선을 주장하지 않습니다. 첫 실행에서 학습은 성공했지만 Base↔SFT 생성 비교가 Transformers 5의 chat-template 반환형 호환 문제로 실패했습니다. 평가 도구를 `ai/model_eval.py`로 분리해 `BatchEncoding`을 올바르게 `model.generate(**encoded)`로 전달하도록 수정했고, 현재 동일 학습+holdout gate를 재실행하는 구조로 바꿨습니다.
+결과: [`results/sft-comparison-2026-09-04.json`](results/sft-comparison-2026-09-04.json)
 
-### 채택 규칙
+### DPO — reject
 
-SFT는 다음 세 조건을 모두 만족해야 DPO 단계로 넘어갑니다.
+초기 DPO CPU run은 120분 제한 때문에 중단됐습니다. 이후 run `33889678246`에서 6 train pair, `max_steps=1`, `max_length=128`로 학습 예산을 제한하고 6개 scenario holdout 전체에서 다시 비교했습니다.
 
-1. unsafe rate 회귀 없음
-2. unsupported-number rate 회귀 없음
-3. reference-token F1이 Base 대비 최소 `+0.02`
+| 지표 | SFT | SFT + DPO |
+| --- | ---: | ---: |
+| reference-token F1 | **0.1244** | 0.1093 |
+| unsafe rate | 0.0000 | **0.0000** |
+| unsupported-number rate | 0.0000 | **0.0000** |
+| mean generation | 5860.3 ms | **4983.6 ms** |
 
-DPO도 SFT와 같은 원칙으로 다시 평가합니다. 좋은 결과가 나오지 않으면 `SFT/DPO를 사용했다`는 이유만으로 제품에 채택하지 않습니다.
+F1 delta가 `-0.0151`이므로 DPO는 **reject**합니다. 안전성은 유지됐지만 content metric이 회귀했기 때문에 최종 post-training 선택은 **SFT adapter**입니다.
 
-## Live Claude S/O/P — 실제 생성 계약 확인
+결과: [`results/dpo-comparison-2026-09-04.json`](results/dpo-comparison-2026-09-04.json)
 
-2026-09-04 Codespace에서 `scripts/live_claude_check.py`를 실제 Anthropic API로 실행했습니다.
+## LLM-as-a-Judge
 
-- generator: `anthropic-claude-sonnet-5-sop-v1`
-- latency: `5217.679 ms`
-- Subjective: 환자 진술 2개 발화를 `source_sequences [1, 2]`에 연결
-- Objective: 관찰 발화를 `source_sequences [3]`에 연결
-- Plan: 의료진 계획 발화를 `source_sequences [4]`에 연결
-- structured output schema와 evidence contract 모두 통과
-
-이 값은 **합성 상담 1건의 live API contract check**이며 평균 지연시간이나 임상 품질 지표로 해석하지 않습니다. 이전에 정상 세션까지 `REVIEW_REQUIRED`로 떨어지던 상태와 달리, 생성기 단독 경로에서는 실제 Claude structured output이 정상 완료됨을 확인했습니다. 다음 게이트는 Review Workspace에서 같은 정상 세션을 E2E로 다시 실행해 `ready → purge`까지 확인하는 것입니다.
-
-원시 결과: [`results/live-claude-sop-2026-09-04.json`](results/live-claude-sop-2026-09-04.json)
-
-## LLM-as-a-Judge — 실제 실행
-
-`anthropic_judge()`와 `scripts/live_ai_judge.py`는 Claude Sonnet 5의 Structured Outputs를 사용해 다음 rubric을 1~5로 평가합니다.
-
-- groundedness
-- completeness
-- safety
-- clarity
-
-2026-09-04 Codespace에서 합성 positive 3건 + 의도적으로 잘못된 negative 3건, 총 **6건을 실제 API로 평가**했습니다.
+Claude Sonnet 5 Structured Outputs로 synthetic positive 3건과 의도적으로 잘못 만든 negative 3건을 실제 API 평가했습니다.
 
 | 그룹 | Groundedness | Completeness | Safety | Clarity |
 | --- | ---: | ---: | ---: | ---: |
-| positive 3건 평균 | **5.000** | **4.333** | **5.000** | **5.000** |
-| negative 3건 평균 | **1.000** | **2.000** | **2.000** | **3.333** |
-| 전체 6건 평균 | 3.000 | 3.167 | 3.500 | 4.167 |
+| positive 평균 | **5.000** | **4.333** | **5.000** | **5.000** |
+| negative 평균 | **1.000** | **2.000** | **2.000** | **3.333** |
 
-의도적으로 삽입한 실패 예제에서 Judge가 다음 위험을 낮은 점수로 구분했습니다.
+원문에 없는 기간, 임의 진단, 증량 권고를 낮은 groundedness/safety로 구분했습니다. 전문의 평가나 임상 검증은 아닙니다.
 
-- 원문에 없는 `3개월` 기간 추가 → groundedness `1`
-- 증상만 있는 원문을 `불면증`으로 진단 → groundedness `1`, safety `1`
-- 용량 변경 대화 없이 증량 권고 → groundedness `1`, safety `1`
-
-따라서 전체 평균 자체를 품질 점수로 해석하지 않고, **정상 초안과 환각·진단·처방 위반 예제를 rubric이 구분하는지 확인한 소규모 synthetic evaluation**으로 기록합니다. 전문의 평가나 임상 검증이 아닙니다.
-
-```bash
-make anthropic-auth
-make judge-live
-```
-
-원시 결과: [`results/llm-judge-live.json`](results/llm-judge-live.json)
-
-CI에서는 비용과 외부 의존성 때문에 live API를 호출하지 않습니다.
+결과: [`results/llm-judge-live.json`](results/llm-judge-live.json)
 
 ## 빠른 검증
 
@@ -166,17 +98,14 @@ uv run python -m ai.lab evaluation
 uv run python -m ai.posttrain generate --count 120
 ```
 
-## 재현성 기록
+Full RAG / post-training:
 
-학습/평가 시 최소 다음을 보존합니다.
+```bash
+uv pip install -r ai/requirements-rag-full.txt
+uv run python -m ai.lab rag-full
+uv pip install -r ai/requirements-training.txt
+uv run python -m ai.posttrain sft
+uv run python -m ai.posttrain dpo --model ai/outputs/sft-merged
+```
 
-- base model + revision
-- dataset hash / split seed
-- CPU/GPU / CUDA
-- transformers / PEFT / TRL versions
-- holdout 결과
-- Base 대비 개선·회귀
-- inference latency
-- 채택/미채택 결정과 이유
-
-`ai/outputs/`의 adapter/checkpoint와 생성 학습 데이터는 Git에 올리지 않습니다.
+`ai/outputs/`의 adapter/checkpoint와 생성 학습 데이터는 Git에 올리지 않습니다. 결과 JSON에는 모델·split·metric·adopt/reject와 synthetic/non-clinical 경계를 남깁니다.
