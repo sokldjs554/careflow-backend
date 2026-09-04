@@ -1,0 +1,36 @@
+name: Refresh runtime lockfile
+
+on:
+  push:
+    branches:
+      - careflow-runtime-packaging-fix
+    paths:
+      - pyproject.toml
+      - .github/workflows/refresh-runtime-lock.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh-lock:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: careflow-runtime-packaging-fix
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+      - name: Refresh lock
+        run: uv lock
+      - name: Commit generated lockfile
+        run: |
+          if git diff --quiet -- uv.lock; then
+            echo "uv.lock already current"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add uv.lock
+          git commit -m "Refresh uv lock for runtime SQLite driver"
+          git push origin HEAD:careflow-runtime-packaging-fix
