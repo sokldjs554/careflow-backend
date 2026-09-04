@@ -3,300 +3,67 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>CareFlow Backend Demo</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22><rect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%2308735c%22/><path d=%22M14 33h10l5-13 8 25 5-12h8%22 fill=%22none%22 stroke=%22white%22 stroke-width=%225%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/></svg>">
+  <title>CareFlow Review Workspace</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22><rect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23111c35%22/><path d=%22M14 33h10l5-13 8 25 5-12h8%22 fill=%22none%22 stroke=%22%235eead4%22 stroke-width=%225%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/></svg>">
   <style>
-    :root {
-      color-scheme: light;
-      --ink: #172821; --muted: #64756e; --line: #d8e2dd; --paper: #f5f8f6;
-      --card: #ffffff; --brand: #08735c; --brand-soft: #e7f4ef; --warn-soft: #fff3e7;
-      font-family: Inter, Pretendard, "Noto Sans KR", system-ui, sans-serif;
-    }
-    * { box-sizing: border-box; }
-    body { margin: 0; background: var(--paper); color: var(--ink); }
-    main { width: min(1180px, calc(100% - 36px)); margin: 0 auto; padding: 34px 0 52px; }
-    header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
-    .eyebrow { color: var(--brand); font-size: 12px; font-weight: 800; letter-spacing: .12em; }
-    h1 { font-size: clamp(30px, 4vw, 52px); line-height: 1.08; margin: 12px 0 10px; letter-spacing: -.04em; }
-    .lead { color: var(--muted); max-width: 720px; line-height: 1.65; margin: 0; }
-    .badge { white-space: nowrap; border: 1px solid #b9d8cc; color: var(--brand); background: var(--brand-soft); border-radius: 999px; padding: 9px 13px; font-size: 12px; font-weight: 700; }
-    .notice { border: 1px solid #f0c89f; background: var(--warn-soft); color: #764314; border-radius: 14px; padding: 13px 16px; font-size: 13px; margin-bottom: 18px; }
-    .grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(360px, .95fr); gap: 18px; }
-    .card { background: var(--card); border: 1px solid var(--line); border-radius: 20px; box-shadow: 0 12px 30px rgba(32, 59, 48, .05); overflow: hidden; }
-    .card-head { padding: 20px 22px 16px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-    .card h2 { font-size: 18px; margin: 0; }
-    .status { font-size: 12px; color: var(--muted); font-weight: 700; }
-    .status strong { color: var(--brand); }
-    .conversation { padding: 18px 22px 8px; min-height: 360px; }
-    .line { display: grid; grid-template-columns: 72px 1fr; gap: 12px; padding: 13px 0; border-bottom: 1px dashed #e5ece8; }
-    .speaker { font-size: 12px; font-weight: 800; color: var(--brand); }
-    .line.clinician .speaker { color: #35629b; }
-    .utterance { font-size: 14px; line-height: 1.55; }
-    .empty { color: var(--muted); font-size: 13px; line-height: 1.7; padding: 20px 0; }
-    .mic-tools { margin: 0 22px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: #f8fbf9; display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
-    .mic-tools label { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; font-weight: 800; }
-    select { border: 1px solid var(--line); border-radius: 9px; padding: 9px 28px 9px 10px; background: white; color: var(--ink); font: inherit; }
-    .mic-state { color: var(--muted); font-size: 12px; margin-left: auto; }
-    button.recording { background: #b43b3b; }
-    .actions { display: flex; flex-wrap: wrap; gap: 10px; padding: 16px 22px 22px; }
-    button { border: 0; border-radius: 11px; padding: 11px 15px; font-size: 13px; font-weight: 800; cursor: pointer; background: var(--brand); color: white; }
-    button.secondary { background: #ecf0ee; color: var(--ink); }
-    button:disabled { opacity: .45; cursor: not-allowed; }
-    .draft { padding: 18px 22px 22px; display: grid; gap: 12px; min-height: 360px; }
-    .section { border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
-    .section-title { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; color: var(--brand); font-size: 12px; font-weight: 900; letter-spacing: .04em; }
-    .section p { min-height: 42px; color: var(--muted); font-size: 13px; line-height: 1.6; margin: 9px 0 0; }
-    .blocked { border-color: #e8c6c6; background: #fff8f8; }
-    .blocked .section-title { color: #a24242; }
-    .events { margin-top: 18px; padding: 16px 18px; border-radius: 16px; background: #11231c; color: #cbe6dc; font: 12px/1.65 ui-monospace, SFMono-Regular, Menlo, monospace; min-height: 108px; white-space: pre-wrap; }
-    footer { margin-top: 18px; color: var(--muted); font-size: 12px; display: flex; justify-content: space-between; gap: 16px; }
-    footer a { color: var(--brand); }
-    @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } header { flex-direction: column; } }
+    :root{color-scheme:light;--navy:#111c35;--navy-2:#172542;--ink:#152033;--muted:#6b7689;--line:#e1e7ef;--paper:#f5f7fb;--card:#fff;--teal:#0f9f8f;--teal-soft:#e9f8f5;--blue:#3267d6;--blue-soft:#eef3ff;--amber:#b7791f;--amber-soft:#fff7e8;--red:#b54747;--red-soft:#fff0f0;--green:#20845a;--green-soft:#ecf8f1;--shadow:0 12px 32px rgba(24,39,75,.07);font-family:Inter,Pretendard,"Noto Sans KR",system-ui,-apple-system,sans-serif}
+    *{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);min-width:1180px}button,input,select,textarea{font:inherit}button{cursor:pointer}
+    .topbar{height:64px;background:var(--navy);color:white;display:flex;align-items:center;padding:0 24px;gap:18px;position:sticky;top:0;z-index:20}.brand{display:flex;align-items:center;gap:10px;font-weight:850;letter-spacing:-.02em;font-size:19px}.brand-mark{width:30px;height:30px;border:1px solid rgba(94,234,212,.35);border-radius:9px;display:grid;place-items:center;color:#5eead4}.top-divider{height:24px;width:1px;background:rgba(255,255,255,.16)}.product-label{font-size:12px;color:#aebbd2;font-weight:700;letter-spacing:.04em}.top-spacer{flex:1}.runtime-pill{display:flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:8px 11px;font-size:11px;color:#dbe5f6;background:rgba(255,255,255,.05)}.dot{width:7px;height:7px;border-radius:50%;background:#5eead4;box-shadow:0 0 0 3px rgba(94,234,212,.12)}
+    .shell{display:grid;grid-template-columns:292px 1fr;min-height:calc(100vh - 64px)}.sidebar{background:#fbfcfe;border-right:1px solid var(--line);padding:18px 14px;display:flex;flex-direction:column;gap:14px}.sidebar-title{display:flex;align-items:center;justify-content:space-between;padding:0 6px}.sidebar-title strong{font-size:13px}.icon-btn{width:32px;height:32px;border:1px solid var(--line);border-radius:9px;background:white;color:var(--ink);font-weight:900}.filters{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;background:#f0f3f8;padding:4px;border-radius:10px}.filter{border:0;background:transparent;border-radius:7px;padding:7px 4px;font-size:10px;color:var(--muted);font-weight:800}.filter.active{background:white;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}.session-list{display:flex;flex-direction:column;gap:8px;overflow:auto;max-height:calc(100vh - 220px);padding-right:2px}.session-card{border:1px solid var(--line);background:white;border-radius:12px;padding:12px;cursor:pointer;transition:.16s}.session-card:hover{border-color:#bcc8d9;transform:translateY(-1px)}.session-card.active{border-color:#91b9ff;box-shadow:0 0 0 2px #e8f0ff}.session-row{display:flex;align-items:center;justify-content:space-between;gap:8px}.session-id{font:700 11px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;color:#44536a}.session-time{font-size:10px;color:#98a2b3;margin-top:8px}.status-chip{font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.04em;padding:5px 7px;border-radius:999px}.status-ready{background:var(--green-soft);color:var(--green)}.status-review_required{background:var(--amber-soft);color:var(--amber)}.status-streaming,.status-created,.status-processing{background:var(--blue-soft);color:var(--blue)}.status-purged{background:#f0f2f5;color:#7a8494}.session-reason{font-size:10px;color:var(--amber);margin-top:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sidebar-foot{margin-top:auto;border-top:1px solid var(--line);padding:12px 6px 2px;font-size:10px;line-height:1.55;color:var(--muted)}
+    .content{padding:18px 20px 30px;overflow:hidden}.notice{display:flex;align-items:center;justify-content:space-between;gap:16px;border:1px solid #efd8ad;background:#fffbf2;color:#6b4d16;border-radius:12px;padding:10px 13px;font-size:11px;margin-bottom:14px}.notice strong{font-weight:900}.dashboard{display:grid;grid-template-columns:1fr 1.05fr .95fr;gap:10px;margin-bottom:14px}.metric{background:white;border:1px solid var(--line);border-radius:12px;padding:12px 14px;box-shadow:0 3px 12px rgba(24,39,75,.03)}.metric-label{font-size:9px;color:#8792a5;font-weight:900;letter-spacing:.08em;text-transform:uppercase}.metric-value{margin-top:6px;font-size:17px;font-weight:850;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.metric-sub{font-size:9px;color:#98a2b3;margin-top:3px}
+    .workspace{display:grid;grid-template-columns:minmax(430px,1.12fr) minmax(390px,.88fr);gap:14px;align-items:start}.panel{background:white;border:1px solid var(--line);border-radius:15px;box-shadow:var(--shadow);overflow:hidden}.panel-head{height:58px;border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 16px;gap:10px}.panel-head h2{margin:0;font-size:14px;letter-spacing:-.01em}.panel-head .sub{font-size:10px;color:var(--muted);margin-left:4px}.panel-spacer{flex:1}.btn{border:1px solid transparent;border-radius:9px;padding:8px 11px;font-size:10px;font-weight:850;background:var(--navy);color:white;display:inline-flex;align-items:center;gap:6px;justify-content:center}.btn.secondary{background:white;color:var(--ink);border-color:var(--line)}.btn.soft{background:var(--blue-soft);color:var(--blue);border-color:#dbe6ff}.btn.approve{background:var(--teal);color:white}.btn.danger{background:white;color:var(--red);border-color:#efcaca}.btn:disabled{opacity:.42;cursor:not-allowed}.select{border:1px solid var(--line);background:white;border-radius:9px;padding:8px 28px 8px 9px;font-size:10px;color:var(--ink);font-weight:700}.toolbar{display:flex;align-items:center;gap:7px;padding:11px 14px;border-bottom:1px solid var(--line);background:#fcfdff}.toolbar .hint{font-size:9px;color:#98a2b3;margin-left:auto}.transcript{height:390px;overflow:auto;padding:8px 14px 14px;scroll-behavior:smooth}.empty-state{height:100%;display:grid;place-items:center;text-align:center;color:#8a95a6;padding:32px}.empty-state strong{display:block;color:#526075;font-size:13px;margin-bottom:6px}.empty-state span{font-size:10px;line-height:1.6}.turn{display:grid;grid-template-columns:76px 1fr;gap:11px;padding:12px 7px;border-bottom:1px solid #edf0f5;border-radius:9px;transition:.2s}.turn.focused{background:#fff6dc;box-shadow:inset 3px 0 #e0a52f}.turn-meta{font-size:9px;color:#98a2b3;padding-top:2px}.speaker-label{font-size:10px;font-weight:900;color:var(--blue);margin-bottom:4px}.turn.patient .speaker-label{color:var(--teal)}.turn-text{font-size:12px;line-height:1.62;color:#2e394b}.turn-tags{margin-top:5px;display:flex;gap:5px}.mini-tag{font-size:8px;color:#7a8494;background:#f2f4f7;border-radius:5px;padding:3px 5px}.privacy-state{border-top:1px solid var(--line);padding:10px 14px;display:flex;align-items:center;gap:8px;font-size:9px;color:var(--muted);background:#fcfdff}.privacy-state strong{color:var(--ink)}.audit{border-top:1px solid var(--line);background:#f9fbfd;padding:11px 14px;max-height:138px;overflow:auto}.audit-title{font-size:9px;font-weight:900;color:#6f7b8e;margin-bottom:8px;letter-spacing:.05em;text-transform:uppercase}.audit-row{display:flex;gap:10px;font-size:9px;color:#6f7b8e;padding:4px 0}.audit-row code{color:#39475b}
+    .draft-body{padding:14px;display:flex;flex-direction:column;gap:10px}.review-banner{border:1px solid #f0d3a2;background:var(--amber-soft);border-radius:10px;padding:9px 10px;font-size:10px;color:#76531c;display:none}.review-banner.show{display:block}.draft-section{border:1px solid var(--line);border-radius:11px;overflow:hidden}.draft-title{display:flex;align-items:center;padding:9px 10px;background:#fafbfc;border-bottom:1px solid var(--line);gap:8px}.draft-title strong{font-size:10px;color:#344257}.draft-title span{font-size:8px;color:#98a2b3}.evidence{margin-left:auto;display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}.evidence button{border:0;background:#e9f3ff;color:#3267d6;border-radius:5px;padding:3px 5px;font-size:8px;font-weight:900;cursor:pointer}textarea{width:100%;border:0;resize:vertical;min-height:78px;padding:10px 11px;font-size:11px;line-height:1.62;color:#344257;outline:none;background:white}textarea:focus{box-shadow:inset 0 0 0 2px #dce8ff}.assessment{border:1px dashed #e2bcbc;background:#fffafa;border-radius:10px;padding:10px 11px;color:#9b4c4c;font-size:9px;line-height:1.55}.assessment strong{font-size:10px}.review-actions{display:flex;gap:7px;padding-top:2px}.review-actions .btn{flex:1}.ops-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;border-top:1px solid var(--line);padding:10px 14px;background:#fbfcfe}.ops-item{font-size:8px;color:#8a95a6}.ops-item strong{display:block;color:#39475b;font-size:10px;margin-top:3px}.good{color:var(--green)!important}.warn{color:var(--amber)!important}.bad{color:var(--red)!important}.toast{position:fixed;right:22px;bottom:22px;background:#172542;color:white;padding:11px 14px;border-radius:10px;box-shadow:0 12px 35px rgba(0,0,0,.2);font-size:10px;opacity:0;transform:translateY(8px);pointer-events:none;transition:.2s;z-index:99;max-width:360px}.toast.show{opacity:1;transform:none}.modal-backdrop{position:fixed;inset:0;background:rgba(10,17,31,.38);display:none;align-items:center;justify-content:center;z-index:60}.modal-backdrop.show{display:flex}.modal{width:430px;background:white;border-radius:16px;box-shadow:0 25px 70px rgba(0,0,0,.24);padding:18px}.modal h3{font-size:14px;margin:0 0 5px}.modal p{font-size:10px;color:var(--muted);line-height:1.6;margin:0 0 14px}.modal-actions{display:flex;gap:8px;justify-content:flex-end}input[type=file]{display:none}
   </style>
 </head>
 <body>
-<main>
-  <header>
-    <div>
-      <div class="eyebrow">CAREFLOW · REALTIME BACKEND PROTOTYPE</div>
-      <h1>실시간 기록은 짧게 보관하고,<br>검토 가능한 초안만 남깁니다.</h1>
-      <p class="lead">WebSocket으로 텍스트 또는 마이크 음성을 받고, 로컬 Whisper 전사와 Claude 구조화 요약을 거쳐 S/O/P 초안을 만듭니다. 근거가 부족하면 자동 완료하지 않고 사람 검토로 전환합니다.</p>
-    </div>
-    <div class="badge" id="runtime-badge">런타임 확인 중</div>
-  </header>
-
-  <div class="notice">합성 데이터만 사용하는 독립 포트폴리오 프로토타입입니다. 의료 진단·치료 서비스가 아니며 실제 환자 정보를 입력하면 안 됩니다.</div>
-
-  <section class="grid">
-    <article class="card">
-      <div class="card-head"><h2>합성·마이크 상담 스트림</h2><div class="status">세션 <strong id="session-status">대기</strong></div></div>
-      <div class="conversation" id="conversation">
-        <div class="empty" id="empty-conversation">세션을 만든 뒤 합성 문장을 보내거나, 화자를 선택하고 한 발화를 녹음하세요.</div>
-      </div>
-      <div class="mic-tools">
-        <label>화자
-          <select id="speaker"><option value="patient">환자</option><option value="clinician">의료진</option></select>
-        </label>
-        <button id="record" disabled>마이크 녹음</button>
-        <span class="mic-state" id="mic-status">서버 확인 중</span>
-      </div>
-      <div class="actions">
-        <button id="start">1. 세션 생성</button>
-        <button id="stream" class="secondary" disabled>합성 3문장 전송</button>
-        <button id="finalize" class="secondary" disabled>2. Claude 초안 생성</button>
-        <button id="reset" class="secondary">초기화</button>
-      </div>
-    </article>
-
-    <article class="card">
-      <div class="card-head"><h2>S/O/P 초안</h2><div class="status">판정 <strong id="review-status">미생성</strong></div></div>
-      <div class="draft">
-        <div class="section"><div class="section-title"><span>S · SUBJECTIVE</span><span id="evidence-s">근거 -</span></div><p id="subjective">세션을 실행하면 초안이 표시됩니다.</p></div>
-        <div class="section"><div class="section-title"><span>O · OBJECTIVE</span><span id="evidence-o">근거 -</span></div><p id="objective">세션을 실행하면 초안이 표시됩니다.</p></div>
-        <div class="section"><div class="section-title"><span>P · PLAN</span><span id="evidence-p">근거 -</span></div><p id="plan">세션을 실행하면 초안이 표시됩니다.</p></div>
-        <div class="section blocked"><div class="section-title"><span>A · ASSESSMENT</span><span>스키마 차단</span></div><p>임상 판단은 자동 생성 범위에서 제외했습니다.</p></div>
-      </div>
-    </article>
-  </section>
-
-  <div id="events" class="events">[ready] 데모를 시작하세요.</div>
-  <footer><span>원문: Redis TTL → 초안 생성 후 삭제 · 감사 로그: 이벤트와 해시만</span><a href="/docs">OpenAPI 문서 열기</a></footer>
-</main>
-
+<header class="topbar"><div class="brand"><span class="brand-mark">⌁</span>CareFlow</div><div class="top-divider"></div><div class="product-label">REVIEW WORKSPACE · SYNTHETIC PORTFOLIO</div><div class="top-spacer"></div><div class="runtime-pill"><span class="dot"></span><span id="runtime-text">runtime 확인 중</span></div></header>
+<div class="shell">
+<aside class="sidebar"><div class="sidebar-title"><strong>Sessions</strong><button class="icon-btn" id="new-session" title="새 세션">＋</button></div><div class="filters"><button class="filter active" data-filter="all">전체</button><button class="filter" data-filter="review_required">검토</button><button class="filter" data-filter="ready">완료</button><button class="filter" data-filter="purged">삭제</button></div><div class="session-list" id="session-list"><div class="empty-state"><span>세션을 불러오는 중입니다.</span></div></div><div class="sidebar-foot">원문 음성은 저장하지 않습니다. 검토가 필요한 전사 원문만 TTL 동안 유지하고, 승인 또는 정상 완료 시 삭제합니다.</div></aside>
+<main class="content">
+<div class="notice"><span><strong>Portfolio boundary</strong> · 합성·비식별 데이터만 사용합니다. 진단·Assessment·치료 결정을 자동 생성하지 않습니다.</span><span id="session-state-text">선택된 세션 없음</span></div>
+<section class="dashboard"><div class="metric"><div class="metric-label">Review queue</div><div class="metric-value" id="metric-review">0</div><div class="metric-sub">사람 검토가 필요한 세션</div></div><div class="metric"><div class="metric-label">Runtime</div><div class="metric-value" id="metric-runtime">-</div><div class="metric-sub" id="metric-runtime-sub">Claude / Whisper</div></div><div class="metric"><div class="metric-label">Last finalize</div><div class="metric-value" id="metric-latency">-</div><div class="metric-sub">브라우저에서 측정한 finalize 왕복 시간</div></div></section>
+<section class="workspace">
+<article class="panel"><div class="panel-head"><h2>Transcript workspace</h2><span class="sub" id="transcript-count">0 utterances</span><div class="panel-spacer"></div><button class="btn danger" id="purge-session" disabled>세션 삭제</button></div>
+<div class="toolbar"><select class="select" id="scenario"><option value="normal">정상 상담</option><option value="evidence_gap">근거 공백</option><option value="sequence_gap">Sequence gap</option><option value="safety_signal">Safety signal</option><option value="duplicate">중복 재전송</option></select><button class="btn soft" id="run-scenario">시나리오 실행</button><button class="btn secondary" id="upload-audio">음성 파일</button><input id="audio-file" type="file" accept="audio/webm,audio/wav,audio/mpeg,audio/mp4,audio/ogg"><select class="select" id="speaker"><option value="patient">환자</option><option value="clinician">의료진</option></select><button class="btn secondary" id="record" disabled>마이크</button><span class="hint" id="mic-hint">STT 확인 중</span></div>
+<div class="transcript" id="transcript"><div class="empty-state"><div><strong>새 세션을 만들거나 기존 세션을 선택하세요.</strong><span>합성 시나리오, 음성 파일, 마이크 입력을 같은 WebSocket 상태 머신으로 처리합니다.</span></div></div></div>
+<div class="privacy-state"><span>DATA LIFECYCLE</span><strong id="privacy-text">전사 원문 상태를 확인하세요.</strong><span class="panel-spacer"></span><button class="btn" id="finalize" disabled>Claude 초안 생성</button></div><div class="audit"><div class="audit-title">Audit timeline · 원문 대신 이벤트만 저장</div><div id="audit-list"><div class="audit-row">아직 이벤트가 없습니다.</div></div></div></article>
+<article class="panel"><div class="panel-head"><h2>S / O / P review</h2><span class="sub" id="draft-version">draft 없음</span><div class="panel-spacer"></div><span class="status-chip status-created" id="draft-status">미생성</span></div><div class="draft-body"><div class="review-banner" id="review-banner"></div><div class="draft-section"><div class="draft-title"><strong>S · SUBJECTIVE</strong><span>환자 진술</span><div class="evidence" id="evidence-subjective"></div></div><textarea id="subjective" placeholder="Claude 초안이 여기에 표시됩니다." disabled></textarea></div><div class="draft-section"><div class="draft-title"><strong>O · OBJECTIVE</strong><span>명시된 관찰·측정</span><div class="evidence" id="evidence-objective"></div></div><textarea id="objective" placeholder="Claude 초안이 여기에 표시됩니다." disabled></textarea></div><div class="draft-section"><div class="draft-title"><strong>P · PLAN</strong><span>의료진이 말한 계획</span><div class="evidence" id="evidence-plan"></div></div><textarea id="plan" placeholder="Claude 초안이 여기에 표시됩니다." disabled></textarea></div><div class="assessment"><strong>A · ASSESSMENT — BLOCKED</strong><br>임상 판단 필드는 JSON Schema와 Pydantic 계약에서 허용하지 않습니다.</div><div class="review-actions"><button class="btn secondary" id="save-review" disabled>수정 저장</button><button class="btn approve" id="approve-review" disabled>승인하고 원문 삭제</button></div></div><div class="ops-strip"><div class="ops-item">DB<strong id="ops-db">-</strong></div><div class="ops-item">Transcript store<strong id="ops-store">-</strong></div><div class="ops-item">TTL<strong id="ops-ttl">-</strong></div><div class="ops-item">Purge<strong id="ops-purge">-</strong></div></div></article>
+</section></main></div>
+<div class="toast" id="toast"></div><div class="modal-backdrop" id="purge-modal"><div class="modal"><h3>세션을 완전히 삭제할까요?</h3><p>전사 원문과 생성된 초안을 제거하고 상태를 purged로 전환합니다. 포트폴리오 데모에서 데이터 수명주기를 확인하기 위한 명시적 삭제 동작입니다.</p><div class="modal-actions"><button class="btn secondary" id="cancel-purge">취소</button><button class="btn danger" id="confirm-purge">삭제</button></div></div></div>
 <script>
-  const sample = [
-    {speaker: "patient", text: "최근 일주일 동안 잠들기 어려웠습니다."},
-    {speaker: "clinician", text: "표정과 말투가 차분한 것을 관찰했습니다."},
-    {speaker: "clinician", text: "다음 주에 수면 상태를 추적할 계획입니다."}
-  ];
-  let sessionId = null;
-  let socket = null;
-  let nextSequence = 1;
-  let speechAvailable = false;
-  let mediaRecorder = null;
-  let mediaStream = null;
-  let audioParts = [];
-  let recordingTimer = null;
-  const $ = (id) => document.getElementById(id);
-  const log = (message) => { $("events").textContent += `\n${message}`; $("events").scrollTop = $("events").scrollHeight; };
-  const waitFor = (connection, expected, timeoutMs = 60000) => new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error("응답 시간 초과")), timeoutMs);
-    const handler = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.type === expected || data.type === "error") {
-        clearTimeout(timeout); connection.removeEventListener("message", handler); resolve(data);
-      }
-    };
-    connection.addEventListener("message", handler);
-  });
-  const ensureSuccess = (data) => {
-    if (data.type === "error") throw new Error(data.code);
-    return data;
-  };
-  const appendConversation = (speaker, text, sequence) => {
-    $("empty-conversation")?.remove();
-    const line = document.createElement("div");
-    line.className = `line ${speaker === "clinician" ? "clinician" : ""}`;
-    const label = speaker === "clinician" ? "의료진" : "환자";
-    const speakerNode = document.createElement("div");
-    speakerNode.className = "speaker";
-    speakerNode.textContent = `${label} · #${sequence}`;
-    const utterance = document.createElement("div");
-    utterance.className = "utterance";
-    utterance.textContent = text;
-    line.append(speakerNode, utterance);
-    $("conversation").append(line);
-  };
-  const stopMediaTracks = () => {
-    if (mediaStream) mediaStream.getTracks().forEach((track) => track.stop());
-    mediaStream = null;
-  };
-
-  async function loadCapabilities() {
-    try {
-      const capabilities = await fetch("/v1/capabilities").then((response) => response.json());
-      speechAvailable = capabilities.speech_enabled;
-      $("runtime-badge").textContent = `${capabilities.note_generator_version} · ${capabilities.speech_recognizer_version || "STT disabled"}`;
-      $("mic-status").textContent = speechAvailable ? "최대 30초 · 원본 미저장" : "STT 서버 설정 필요";
-    } catch (error) {
-      $("runtime-badge").textContent = "런타임 확인 실패";
-      $("mic-status").textContent = "서버 상태를 확인하세요";
-      log(`[capabilities.error] ${error.message}`);
-    }
-  }
-  loadCapabilities();
-
-  $("start").onclick = async () => {
-    const response = await fetch("/v1/sessions", {
-      method: "POST", headers: {"Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID()},
-      body: JSON.stringify({language: "ko"})
-    });
-    const data = await response.json();
-    sessionId = data.session_id;
-    const protocol = location.protocol === "https:" ? "wss" : "ws";
-    socket = new WebSocket(`${protocol}://${location.host}${data.websocket_path}`);
-    await new Promise((resolve) => socket.addEventListener("open", resolve, {once: true}));
-    $("session-status").textContent = "created";
-    $("stream").disabled = false;
-    $("record").disabled = !speechAvailable || !navigator.mediaDevices || !window.MediaRecorder;
-    $("start").disabled = true;
-    log(`[session.created] ${sessionId}`);
-  };
-
-  $("stream").onclick = async () => {
-    try {
-      $("stream").disabled = true;
-      $("record").disabled = true;
-      for (const item of sample) {
-        const chunk = {type: "transcript.chunk", sequence: nextSequence, ...item};
-        const pending = waitFor(socket, "transcript.ack");
-        socket.send(JSON.stringify(chunk));
-        const ack = ensureSuccess(await pending);
-        appendConversation(item.speaker, item.text, nextSequence);
-        log(`[transcript.ack] sequence=${ack.sequence} duplicate=${ack.duplicate}`);
-        nextSequence += 1;
-      }
-      $("session-status").textContent = "streaming";
-      $("finalize").disabled = false;
-    } catch (error) {
-      $("stream").disabled = false;
-      log(`[error] ${error.message}`);
-    } finally {
-      $("record").disabled = !speechAvailable;
-    }
-  };
-
-  $("record").onclick = async () => {
-    if (mediaRecorder?.state === "recording") {
-      clearTimeout(recordingTimer);
-      mediaRecorder.stop();
-      return;
-    }
-    try {
-      mediaStream = await navigator.mediaDevices.getUserMedia({audio: true});
-      const candidates = ["audio/webm;codecs=opus", "audio/mp4", "audio/ogg;codecs=opus"];
-      const selected = candidates.find((type) => MediaRecorder.isTypeSupported(type));
-      mediaRecorder = new MediaRecorder(mediaStream, selected ? {mimeType: selected} : undefined);
-      audioParts = [];
-      mediaRecorder.ondataavailable = (event) => { if (event.data.size) audioParts.push(event.data); };
-      mediaRecorder.onstop = sendRecordedAudio;
-      mediaRecorder.start();
-      $("stream").disabled = true;
-      $("finalize").disabled = true;
-      $("record").textContent = "녹음 종료";
-      $("record").classList.add("recording");
-      $("mic-status").textContent = "녹음 중 · 최대 30초";
-      recordingTimer = setTimeout(() => mediaRecorder?.state === "recording" && mediaRecorder.stop(), 30000);
-    } catch (error) {
-      stopMediaTracks();
-      log(`[microphone.error] ${error.message}`);
-    }
-  };
-
-  async function sendRecordedAudio() {
-    clearTimeout(recordingTimer);
-    $("record").disabled = true;
-    $("record").classList.remove("recording");
-    $("record").textContent = "마이크 녹음";
-    $("mic-status").textContent = "Whisper 인식 중";
-    try {
-      const blob = new Blob(audioParts, {type: mediaRecorder.mimeType});
-      const contentType = (blob.type || "audio/webm").split(";")[0];
-      const metadata = {
-        type: "audio.start", sequence: nextSequence,
-        speaker: $("speaker").value, content_type: contentType
-      };
-      const readyPromise = waitFor(socket, "audio.ready", 10000);
-      socket.send(JSON.stringify(metadata));
-      ensureSuccess(await readyPromise);
-      const resultPromise = waitFor(socket, "transcript.recognized", 180000);
-      socket.send(await blob.arrayBuffer());
-      const result = ensureSuccess(await resultPromise);
-      appendConversation(result.speaker, result.text, result.sequence);
-      log(`[transcript.recognized] sequence=${result.sequence} duration=${result.duration_seconds}s raw_audio_persisted=${result.raw_audio_persisted}`);
-      nextSequence += 1;
-      $("session-status").textContent = "streaming";
-      $("finalize").disabled = false;
-      $("mic-status").textContent = "인식 완료 · 원본 미저장";
-    } catch (error) {
-      $("mic-status").textContent = "인식 실패 · 재시도 가능";
-      log(`[speech.error] ${error.message}`);
-    } finally {
-      audioParts = [];
-      stopMediaTracks();
-      $("record").disabled = false;
-      $("stream").disabled = false;
-      $("finalize").disabled = nextSequence === 1;
-    }
-  }
-
-  $("finalize").onclick = async () => {
-    try {
-      $("finalize").disabled = true;
-      $("record").disabled = true;
-      const pending = waitFor(socket, "session.finalized", 180000);
-      socket.send(JSON.stringify({type: "session.finalize"}));
-      const result = ensureSuccess(await pending);
-      log(`[session.finalized] status=${result.status} transcript_purged=${result.transcript_purged}`);
-      const draft = await fetch(`/v1/sessions/${sessionId}/draft`).then((response) => response.json());
-      for (const field of ["subjective", "objective", "plan"]) $(field).textContent = draft[field];
-      for (const suffix of ["s", "o", "p"]) $(`evidence-${suffix}`).textContent = "근거 -";
-      for (const item of draft.evidence) {
-        const suffix = item.section === "subjective" ? "s" : item.section === "objective" ? "o" : "p";
-        $(`evidence-${suffix}`).textContent = `근거 #${item.source_sequences.join(", #")}`;
-      }
-      $("review-status").textContent = draft.review_required ? "사람 검토" : "계약 통과";
-      $("session-status").textContent = result.status;
-      $("stream").disabled = true;
-      log(`[draft.created] generator=${draft.generator_version} reasons=${draft.review_reasons.join(",") || "none"}`);
-    } catch (error) {
-      $("finalize").disabled = false;
-      $("record").disabled = !speechAvailable;
-      log(`[finalize.error] ${error.message}`);
-    }
-  };
-
-  $("reset").onclick = () => location.reload();
+const $=(id)=>document.getElementById(id);const state={sessionId:null,socket:null,nextSequence:1,transcript:[],draft:null,sessions:[],filter:"all",speechAvailable:false,recording:false,recorder:null,mediaStream:null,audioParts:[],lastFinalizeMs:null,transcriptPurged:null};
+const scenarios={normal:[{sequence:1,speaker:"patient",text:"최근 일주일 동안 잠드는 데 한 시간쯤 걸렸습니다."},{sequence:2,speaker:"patient",text:"아침에 피곤해서 업무에 집중하기 어려웠습니다."},{sequence:3,speaker:"clinician",text:"대화 중 말투와 호흡이 차분한 것을 관찰했습니다."},{sequence:4,speaker:"clinician",text:"다음 주에 수면 기록을 함께 확인할 계획입니다."}],evidence_gap:[{sequence:1,speaker:"patient",text:"최근 잠드는 데 시간이 오래 걸립니다."}],sequence_gap:[{sequence:1,speaker:"patient",text:"최근 잠들기 어렵습니다."},{sequence:3,speaker:"clinician",text:"말투가 차분한 것을 관찰했습니다."},{sequence:4,speaker:"clinician",text:"다음 주에 수면 기록을 확인할 계획입니다."}],safety_signal:[{sequence:1,speaker:"patient",text:"요즘 죽고 싶다는 생각이 들 때가 있습니다."},{sequence:2,speaker:"clinician",text:"대화 중 말투가 느린 것을 관찰했습니다."},{sequence:3,speaker:"clinician",text:"즉시 담당자가 검토하고 다음 계획을 정합니다."}],duplicate:[{sequence:1,speaker:"patient",text:"최근 잠들기 어렵습니다."},{sequence:1,speaker:"patient",text:"최근 잠들기 어렵습니다.",duplicateDemo:true},{sequence:2,speaker:"clinician",text:"표정과 말투가 차분한 것을 관찰했습니다."},{sequence:3,speaker:"clinician",text:"다음 주에 상태를 확인할 계획입니다."}]};
+function toast(message){const node=$("toast");node.textContent=message;node.classList.add("show");clearTimeout(node._timer);node._timer=setTimeout(()=>node.classList.remove("show"),2800)}
+async function api(path,options={}){const response=await fetch(path,options);const text=await response.text();let body=null;try{body=text?JSON.parse(text):null}catch{body=text}if(!response.ok){const detail=body?.detail||body?.code||`${response.status}`;throw new Error(detail)}return body}
+function statusClass(status){return `status-${status||"created"}`}function shortId(id){return id?id.slice(0,8):"-"}function formatTime(value){if(!value)return"-";const date=new Date(value);return new Intl.DateTimeFormat("ko-KR",{hour:"2-digit",minute:"2-digit",month:"2-digit",day:"2-digit"}).format(date)}
+function reasonLabel(reason){const labels={potential_safety_signal:"Safety signal",evidence_gap:"근거 공백",sequence_gap:"Sequence gap",generation_failure:"생성 실패",schema_violation:"스키마 위반"};return labels[reason]||reason}function setStatus(node,status){node.className=`status-chip ${statusClass(status)}`;node.textContent=status||"미생성"}
+async function loadCapabilities(){try{const cap=await api("/v1/capabilities");state.speechAvailable=cap.speech_enabled;$("runtime-text").textContent=`${cap.note_generator_version} · ${cap.speech_recognizer_version||"STT off"}`;$("metric-runtime").textContent=cap.note_generator_version.replace("anthropic-","").replace("-sop-v1","");$("metric-runtime-sub").textContent=cap.speech_recognizer_version||"STT disabled";$("record").disabled=!cap.speech_enabled||!navigator.mediaDevices||!window.MediaRecorder;$("mic-hint").textContent=cap.speech_enabled?"최대 45초 · 음성 미저장":"STT 비활성"}catch(error){$("runtime-text").textContent="runtime 확인 실패";toast(`capabilities: ${error.message}`)}}
+async function loadOperations(){try{const ops=await api("/v1/operations");$("metric-review").textContent=ops.review_queue;$("ops-db").textContent=ops.database_ready?"healthy":"down";$("ops-db").className=ops.database_ready?"good":"bad";$("ops-store").textContent=ops.transcript_store_ready?"healthy":"down";$("ops-store").className=ops.transcript_store_ready?"good":"bad";$("ops-ttl").textContent=`${Math.round(ops.transcript_ttl_seconds/60)} min`}catch{$("ops-db").textContent="error";$("ops-store").textContent="error"}}
+async function loadSessions(){try{state.sessions=await api("/v1/sessions?limit=50");renderSessions()}catch(error){$("session-list").innerHTML=`<div class="empty-state"><span>세션 목록을 불러오지 못했습니다.<br>${escapeHtml(error.message)}</span></div>`}}
+function renderSessions(){const list=$("session-list");const filtered=state.sessions.filter((item)=>state.filter==="all"||item.status===state.filter);if(!filtered.length){list.innerHTML=`<div class="empty-state"><span>표시할 세션이 없습니다.</span></div>`;return}list.innerHTML=filtered.map((item)=>`<div class="session-card ${item.session_id===state.sessionId?"active":""}" data-session="${item.session_id}"><div class="session-row"><span class="session-id">#${shortId(item.session_id)}</span><span class="status-chip ${statusClass(item.status)}">${item.status}</span></div><div class="session-time">${formatTime(item.updated_at)} · ${item.has_draft?"draft 있음":"draft 없음"}</div>${item.review_reasons?.length?`<div class="session-reason">${item.review_reasons.map(reasonLabel).join(" · ")}</div>`:""}</div>`).join("");list.querySelectorAll("[data-session]").forEach((card)=>{card.addEventListener("click",()=>selectSession(card.dataset.session))})}
+function resetWorkspace(){state.transcript=[];state.draft=null;state.nextSequence=1;state.transcriptPurged=null;renderTranscript();renderDraft(null);renderAudit([]);$("metric-latency").textContent="-"}
+async function createSession(){try{closeSocket();const created=await api("/v1/sessions",{method:"POST",headers:{"Content-Type":"application/json","Idempotency-Key":crypto.randomUUID()},body:JSON.stringify({language:"ko"})});state.sessionId=created.session_id;resetWorkspace();await connectSocket(created.websocket_path);$("session-state-text").textContent=`#${shortId(created.session_id)} · created`;$("finalize").disabled=true;$("purge-session").disabled=false;await refreshAll();toast("새 세션을 만들었습니다.")}catch(error){toast(`세션 생성 실패: ${error.message}`)}}
+function closeSocket(){if(state.socket){try{state.socket.close()}catch{}}state.socket=null}async function connectSocket(path){closeSocket();const protocol=location.protocol==="https:"?"wss":"ws";const socket=new WebSocket(`${protocol}://${location.host}${path}`);await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error("WebSocket 연결 시간 초과")),10000);socket.addEventListener("open",()=>{clearTimeout(timer);resolve()},{once:true});socket.addEventListener("error",()=>{clearTimeout(timer);reject(new Error("WebSocket 연결 실패"))},{once:true})});state.socket=socket}
+function waitFor(expected,timeoutMs=90000){return new Promise((resolve,reject)=>{if(!state.socket||state.socket.readyState!==WebSocket.OPEN){reject(new Error("WebSocket이 연결되지 않았습니다."));return}const timer=setTimeout(()=>{state.socket?.removeEventListener("message",handler);reject(new Error(`${expected} 응답 시간 초과`))},timeoutMs);const handler=(event)=>{const data=JSON.parse(event.data);if(data.type===expected||data.type==="error"){clearTimeout(timer);state.socket.removeEventListener("message",handler);if(data.type==="error")reject(new Error(data.detail||data.code));else resolve(data)}};state.socket.addEventListener("message",handler)})}
+async function ensureWritableSession(){if(!state.sessionId){await createSession();return}const item=state.sessions.find((s)=>s.session_id===state.sessionId);if(!item||!["created","streaming"].includes(item.status)){await createSession()}else if(!state.socket||state.socket.readyState!==WebSocket.OPEN){const session=await api(`/v1/sessions/${state.sessionId}`);await connectSocket(session.websocket_path)}}
+async function runScenario(){const name=$("scenario").value;const chunks=scenarios[name];try{await createSession();$("run-scenario").disabled=true;for(const chunk of chunks){const pending=waitFor("transcript.ack");state.socket.send(JSON.stringify({type:"transcript.chunk",sequence:chunk.sequence,speaker:chunk.speaker,text:chunk.text}));const ack=await pending;if(!ack.duplicate){addTranscript({sequence:chunk.sequence,speaker:chunk.speaker,text:chunk.text,source:"text"})}else{toast(`sequence #${chunk.sequence} 중복 재전송을 idempotent 처리했습니다.`)}state.nextSequence=Math.max(state.nextSequence,chunk.sequence+1)}$("finalize").disabled=state.transcript.length===0;await refreshAll()}catch(error){toast(`시나리오 실패: ${error.message}`)}finally{$("run-scenario").disabled=false}}
+function addTranscript(item){const existing=state.transcript.find((turn)=>turn.sequence===item.sequence);if(!existing)state.transcript.push(item);state.transcript.sort((a,b)=>a.sequence-b.sequence);renderTranscript()}
+function renderTranscript(){const root=$("transcript");$("transcript-count").textContent=`${state.transcript.length} utterances`;if(!state.transcript.length){const msg=state.sessionId?"전사 원문이 없거나 이미 삭제되었습니다.":"새 세션을 만들거나 기존 세션을 선택하세요.";root.innerHTML=`<div class="empty-state"><div><strong>${msg}</strong><span>합성 시나리오, 음성 파일, 마이크 입력을 같은 상태 머신으로 처리합니다.</span></div></div>`;return}root.innerHTML=state.transcript.map((item)=>`<div class="turn ${item.speaker==="patient"?"patient":""}" data-seq="${item.sequence}"><div class="turn-meta">#${item.sequence}<br>${item.duration?`${item.duration.toFixed(1)}s`:""}</div><div><div class="speaker-label">${item.speaker==="patient"?"환자":"의료진"}</div><div class="turn-text">${escapeHtml(item.text)}</div><div class="turn-tags"><span class="mini-tag">${item.source==="audio"?"Whisper":"WebSocket text"}</span></div></div></div>`).join("")}
+function focusEvidence(sequence){document.querySelectorAll(".turn.focused").forEach((node)=>node.classList.remove("focused"));const node=document.querySelector(`.turn[data-seq="${sequence}"]`);if(!node){toast(`근거 #${sequence} 원문은 TTL 만료 또는 purge로 더 이상 보관되지 않습니다.`);return}node.classList.add("focused");node.scrollIntoView({behavior:"smooth",block:"center"});setTimeout(()=>node.classList.remove("focused"),2600)}
+function evidenceMap(draft){const map={subjective:[],objective:[],plan:[]};for(const item of draft?.evidence||[])map[item.section]=item.source_sequences;return map}function renderEvidence(containerId,sequences){const node=$(containerId);node.innerHTML=sequences.length?sequences.map((seq)=>`<button type="button" data-evidence="${seq}">#${seq}</button>`).join(""):`<span>근거 없음</span>`;node.querySelectorAll("[data-evidence]").forEach((button)=>{button.addEventListener("click",()=>focusEvidence(Number(button.dataset.evidence)))})}
+function renderDraft(draft){state.draft=draft;const fields=["subjective","objective","plan"];if(!draft){fields.forEach((id)=>{$(id).value="";$(id).disabled=true});["subjective","objective","plan"].forEach((section)=>renderEvidence(`evidence-${section}`,[]));$("draft-version").textContent="draft 없음";setStatus($("draft-status"),"created");$("draft-status").textContent="미생성";$("review-banner").classList.remove("show");$("save-review").disabled=true;$("approve-review").disabled=true;return}fields.forEach((id)=>{$(id).value=draft[id]||"";$(id).disabled=false});const map=evidenceMap(draft);renderEvidence("evidence-subjective",map.subjective);renderEvidence("evidence-objective",map.objective);renderEvidence("evidence-plan",map.plan);$("draft-version").textContent=`${draft.generator_version} · ${formatTime(draft.generated_at)}`;setStatus($("draft-status"),draft.status);const banner=$("review-banner");if(draft.review_required){banner.textContent=`사람 검토 필요 · ${draft.review_reasons.map(reasonLabel).join(" · ")} · 원문은 승인 전까지 TTL 내에서만 유지됩니다.`;banner.classList.add("show")}else{banner.classList.remove("show")}$("save-review").disabled=false;$("approve-review").disabled=!draft.review_required}
+async function finalizeSession(){if(!state.sessionId)return;try{$("finalize").disabled=true;setStatus($("draft-status"),"processing");const started=performance.now();const result=await api(`/v1/sessions/${state.sessionId}/finalize`,{method:"POST"});state.lastFinalizeMs=performance.now()-started;$("metric-latency").textContent=`${state.lastFinalizeMs.toFixed(0)} ms`;state.transcriptPurged=result.transcript_purged;const draft=await api(`/v1/sessions/${state.sessionId}/draft`);renderDraft(draft);updatePrivacy(result.status,result.transcript_purged);await refreshAll();toast(result.review_required?"사람 검토 큐로 전환했습니다.":"초안 생성 후 전사 원문을 삭제했습니다.")}catch(error){toast(`초안 생성 실패: ${error.message}`);$("finalize").disabled=false}}
+function updatePrivacy(status,purged){if(!state.sessionId){$("privacy-text").textContent="전사 원문 상태를 확인하세요.";$("ops-purge").textContent="-";return}if(purged){$("privacy-text").textContent="전사 원문 삭제 완료 · 파생 초안만 유지";$("ops-purge").textContent="purged ✓";$("ops-purge").className="good"}else if(status==="review_required"){$("privacy-text").textContent="검토 대기 · 전사 원문 TTL 유지";$("ops-purge").textContent="retained";$("ops-purge").className="warn"}else{$("privacy-text").textContent="전사 원문 TTL 저장 중";$("ops-purge").textContent="pending";$("ops-purge").className=""}}
+async function saveReview(action){if(!state.sessionId||!state.draft)return;try{const result=await api(`/v1/sessions/${state.sessionId}/draft`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({subjective:$("subjective").value.trim(),objective:$("objective").value.trim(),plan:$("plan").value.trim(),action})});state.transcriptPurged=result.transcript_purged;const draft=await api(`/v1/sessions/${state.sessionId}/draft`);renderDraft(draft);updatePrivacy(result.status,result.transcript_purged);if(action==="approve"){const transcript=await api(`/v1/sessions/${state.sessionId}/transcript`);if(!transcript.transcript_available){$("privacy-text").textContent="검토 승인 완료 · 서버 원문 삭제 완료"}}await refreshAll();toast(action==="approve"?"검토를 승인하고 서버 원문을 삭제했습니다.":"검토 수정을 저장했습니다.")}catch(error){toast(`검토 저장 실패: ${error.message}`)}}
+async function loadAudit(){if(!state.sessionId)return renderAudit([]);try{renderAudit(await api(`/v1/sessions/${state.sessionId}/audit?limit=20`))}catch{renderAudit([])}}function renderAudit(events){const root=$("audit-list");if(!events.length){root.innerHTML=`<div class="audit-row">아직 이벤트가 없습니다.</div>`;return}root.innerHTML=events.map((event)=>`<div class="audit-row"><span>${formatTime(event.created_at)}</span><code>${escapeHtml(event.event_type)}</code></div>`).join("")}
+async function selectSession(sessionId){try{closeSocket();state.sessionId=sessionId;state.transcript=[];state.draft=null;const summary=state.sessions.find((item)=>item.session_id===sessionId);const session=await api(`/v1/sessions/${sessionId}`);const transcript=await api(`/v1/sessions/${sessionId}/transcript`);state.transcript=transcript.chunks.map((chunk)=>({...chunk,source:"text"}));state.nextSequence=state.transcript.reduce((max,item)=>Math.max(max,item.sequence+1),1);state.transcriptPurged=!transcript.transcript_available;renderTranscript();updatePrivacy(session.status,state.transcriptPurged);if(summary?.has_draft){try{renderDraft(await api(`/v1/sessions/${sessionId}/draft`))}catch{renderDraft(null)}}else{renderDraft(null)}await loadAudit();if(["created","streaming"].includes(session.status)){await connectSocket(session.websocket_path)}$("finalize").disabled=!["created","streaming"].includes(session.status)||state.transcript.length===0;$("purge-session").disabled=session.status==="purged";$("session-state-text").textContent=`#${shortId(sessionId)} · ${session.status}`;renderSessions()}catch(error){toast(`세션 로드 실패: ${error.message}`)}}
+async function refreshAll(){await Promise.all([loadSessions(),loadOperations()]);if(state.sessionId)await loadAudit()}
+function normalizeContentType(type,name=""){const base=(type||"").split(";")[0].toLowerCase();if(base==="audio/mp3"||base==="audio/x-mp3")return"audio/mpeg";if(base==="audio/x-wav"||base==="audio/wave")return"audio/wav";if(["audio/webm","audio/mp4","audio/ogg","audio/wav","audio/mpeg"].includes(base))return base;const lower=name.toLowerCase();if(lower.endsWith(".wav"))return"audio/wav";if(lower.endsWith(".mp3"))return"audio/mpeg";if(lower.endsWith(".m4a")||lower.endsWith(".mp4"))return"audio/mp4";if(lower.endsWith(".ogg"))return"audio/ogg";if(lower.endsWith(".webm"))return"audio/webm";return null}
+async function sendAudio(blob,name=""){try{await ensureWritableSession();const contentType=normalizeContentType(blob.type,name);if(!contentType)throw new Error("지원 형식: WebM, WAV, MP3, MP4/M4A, OGG");const sequence=state.nextSequence;const speaker=$("speaker").value;const ready=waitFor("audio.ready");state.socket.send(JSON.stringify({type:"audio.start",sequence,speaker,content_type:contentType}));await ready;const recognized=waitFor("transcript.recognized",120000);state.socket.send(await blob.arrayBuffer());const result=await recognized;addTranscript({sequence:result.sequence,speaker:result.speaker,text:result.text,duration:result.duration_seconds,source:"audio"});state.nextSequence=Math.max(state.nextSequence,result.sequence+1);$("finalize").disabled=false;await refreshAll();toast(`Whisper 전사 완료 · ${result.duration_seconds.toFixed(1)}초 · 원본 음성 미저장`)}catch(error){toast(`음성 처리 실패: ${error.message}`)}}
+async function toggleRecording(){if(state.recording){state.recorder?.stop();return}try{await ensureWritableSession();state.mediaStream=await navigator.mediaDevices.getUserMedia({audio:true});state.audioParts=[];const recorder=new MediaRecorder(state.mediaStream);state.recorder=recorder;recorder.addEventListener("dataavailable",(event)=>{if(event.data.size)state.audioParts.push(event.data)});recorder.addEventListener("stop",async()=>{state.recording=false;$("record").textContent="마이크";state.mediaStream?.getTracks().forEach((track)=>track.stop());const blob=new Blob(state.audioParts,{type:recorder.mimeType||"audio/webm"});await sendAudio(blob,"microphone.webm")},{once:true});recorder.start();state.recording=true;$("record").textContent="녹음 중지";toast("한 발화를 녹음하고 중지하세요.");setTimeout(()=>{if(state.recording&&recorder.state==="recording")recorder.stop()},30000)}catch(error){toast(`마이크 시작 실패: ${error.message}`)}}
+async function purgeSession(){if(!state.sessionId)return;try{await api(`/v1/sessions/${state.sessionId}`,{method:"DELETE"});$("purge-modal").classList.remove("show");resetWorkspace();$("session-state-text").textContent=`#${shortId(state.sessionId)} · purged`;$("purge-session").disabled=true;updatePrivacy("purged",true);await refreshAll();toast("세션과 초안을 삭제했습니다.")}catch(error){toast(`삭제 실패: ${error.message}`)}}
+function escapeHtml(value){return String(value??"").replace(/[&<>"']/g,(char)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[char]))}
+$("new-session").addEventListener("click",createSession);$("run-scenario").addEventListener("click",runScenario);$("finalize").addEventListener("click",finalizeSession);$("save-review").addEventListener("click",()=>saveReview("save"));$("approve-review").addEventListener("click",()=>saveReview("approve"));$("record").addEventListener("click",toggleRecording);$("upload-audio").addEventListener("click",()=>$("audio-file").click());$("audio-file").addEventListener("change",async(event)=>{const file=event.target.files?.[0];if(file)await sendAudio(file,file.name);event.target.value=""});$("purge-session").addEventListener("click",()=>$("purge-modal").classList.add("show"));$("cancel-purge").addEventListener("click",()=>$("purge-modal").classList.remove("show"));$("confirm-purge").addEventListener("click",purgeSession);document.querySelectorAll(".filter").forEach((button)=>{button.addEventListener("click",()=>{document.querySelectorAll(".filter").forEach((item)=>item.classList.remove("active"));button.classList.add("active");state.filter=button.dataset.filter;renderSessions()})});(async()=>{await Promise.all([loadCapabilities(),loadOperations(),loadSessions()])})();
 </script>
 </body>
 </html>

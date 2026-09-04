@@ -1,16 +1,22 @@
 from typing import cast
 
-from fastapi import APIRouter, Header, Request
+from fastapi import APIRouter, Header, Query, Request
 
 from app.schemas import (
+    AuditEventResponse,
     CapabilitiesResponse,
     ChunkAck,
     CreateSessionRequest,
     FinalizeResponse,
     NoteDraftResponse,
+    OperationsResponse,
     PurgeResponse,
+    ReviewDraftRequest,
+    ReviewDraftResponse,
     SessionResponse,
+    SessionSummaryResponse,
     TranscriptChunkInput,
+    TranscriptResponse,
 )
 from app.services.session_service import SessionService
 from app.services.speech_recognizer import SpeechRecognizer
@@ -33,6 +39,12 @@ async def get_capabilities(request: Request) -> CapabilitiesResponse:
     )
 
 
+@router.get("/operations", response_model=OperationsResponse)
+async def get_operations(request: Request) -> OperationsResponse:
+    recognizer = cast(SpeechRecognizer | None, request.app.state.speech_recognizer)
+    return await _service(request).operations(recognizer.version if recognizer else None)
+
+
 @router.post("/sessions", response_model=SessionResponse, status_code=201)
 async def create_session(
     payload: CreateSessionRequest,
@@ -42,9 +54,31 @@ async def create_session(
     return await _service(request).create_session(payload, idempotency_key)
 
 
+@router.get("/sessions", response_model=list[SessionSummaryResponse])
+async def list_sessions(
+    request: Request,
+    limit: int = Query(default=50, ge=1, le=100),
+) -> list[SessionSummaryResponse]:
+    return await _service(request).list_sessions(limit)
+
+
 @router.get("/sessions/{session_id}", response_model=SessionResponse)
 async def get_session(session_id: str, request: Request) -> SessionResponse:
     return await _service(request).get_session(session_id)
+
+
+@router.get("/sessions/{session_id}/transcript", response_model=TranscriptResponse)
+async def get_transcript(session_id: str, request: Request) -> TranscriptResponse:
+    return await _service(request).get_transcript(session_id)
+
+
+@router.get("/sessions/{session_id}/audit", response_model=list[AuditEventResponse])
+async def get_audit_events(
+    session_id: str,
+    request: Request,
+    limit: int = Query(default=50, ge=1, le=100),
+) -> list[AuditEventResponse]:
+    return await _service(request).list_audit_events(session_id, limit)
 
 
 @router.post("/sessions/{session_id}/chunks", response_model=ChunkAck)
@@ -62,6 +96,13 @@ async def finalize_session(session_id: str, request: Request) -> FinalizeRespons
 @router.get("/sessions/{session_id}/draft", response_model=NoteDraftResponse)
 async def get_draft(session_id: str, request: Request) -> NoteDraftResponse:
     return await _service(request).get_draft(session_id)
+
+
+@router.patch("/sessions/{session_id}/draft", response_model=ReviewDraftResponse)
+async def review_draft(
+    session_id: str, payload: ReviewDraftRequest, request: Request
+) -> ReviewDraftResponse:
+    return await _service(request).review_draft(session_id, payload)
 
 
 @router.delete("/sessions/{session_id}", response_model=PurgeResponse)
