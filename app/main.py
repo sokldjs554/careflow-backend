@@ -65,6 +65,26 @@ def _provider_neutral_demo_html() -> str:
         'if(order!==null&&i===order)n.classList.add("current")});'
     )
     html = html.replace(old_lifecycle, new_lifecycle)
+
+    quality_heading = (
+        '<section class="view" id="view-quality"><div class="section-title">'
+        '<h2>AI Quality Gate</h2><p>기법을 사용했다는 사실보다 같은 평가셋에서 '
+        '채택·미채택을 결정한 근거를 보여줍니다.</p></div>'
+    )
+    selection_path = quality_heading + (
+        '<div class="architecture" style="margin:0 0 12px">'
+        '<div class="section-title" style="margin:0 0 10px">'
+        '<h2>Post-training selection path</h2>'
+        '<p>같은 holdout과 회귀 기준으로 다음 단계 승격 여부를 결정했습니다.</p>'
+        '</div><div class="arch-flow" style="grid-template-columns:repeat(3,1fr)">'
+        '<div class="arch-node"><b>BASE</b><span>reference-token F1 · 0.0648</span></div>'
+        '<div class="arch-node" style="border-color:#8fd7c2;background:#f3fbf8">'
+        '<b>SFT · ADOPTED</b><span>0.1244 · Δ +0.0596 · safety regression 0</span></div>'
+        '<div class="arch-node" style="border-color:#e6c57f;background:#fffaf0">'
+        '<b>DPO · REJECTED</b><span>0.1093 · Δ -0.0151 · SFT 유지</span></div>'
+        '</div></div>'
+    )
+    html = html.replace(quality_heading, selection_path)
     return html
 
 
