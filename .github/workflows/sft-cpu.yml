@@ -12,10 +12,10 @@ permissions:
   contents: read
 
 jobs:
-  sft:
-    name: Qwen2.5-0.5B LoRA SFT + holdout gate
+  posttrain:
+    name: Qwen2.5-0.5B SFT gate + conditional DPO
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
     env:
       HF_HUB_DISABLE_TELEMETRY: "1"
       TOKENIZERS_PARALLELISM: "false"
@@ -31,15 +31,59 @@ jobs:
           uv pip install -r ai/requirements-posttrain-cpu.txt
       - name: Generate reviewed synthetic SFT and DPO contracts
         run: uv run python -m ai.posttrain generate --count 120
-      - name: Train Qwen2.5 0.5B LoRA on CPU
+      - name: Train Qwen2.5 0.5B LoRA on CPU and merge adapter
         run: >-
           uv run python -m ai.posttrain sft
           --model Qwen/Qwen2.5-0.5B-Instruct
           --device cpu
-          --no-merge
       - name: Compare base versus SFT on held-out split
         run: >-
-          uv run python -m ai.posttrain compare-sft
+          uv run python -m ai.model_eval
           --base Qwen/Qwen2.5-0.5B-Instruct
           --candidate ai/outputs/sft-adapter
+          --data ai/data/training/sft.jsonl
           --output ai/results/sft-comparison.json
+          --max-samples 12
+          --max-new-tokens 64
+          --min-f1-gain 0.02
+      - name: Decide whether DPO is allowed
+        id: sft_gate
+        shell: bash
+        run: |
+          decision=$(uv run python -c 'import json; print(json.load(open("ai/results/sft-comparison.json", encoding="utf-8"))["decision"])')
+          echo "decision=$decision" >> "$GITHUB_OUTPUT"
+          if [ "$decision" = "adopt" ]; then
+            echo "run_dpo=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run_dpo=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "SFT gate decision: $decision"
+      - name: Build smaller DPO preference split
+        if: steps.sft_gate.outputs.run_dpo == 'true'
+        run: uv run python -m ai.posttrain generate --count 60
+      - name: Train DPO from merged SFT model
+        if: steps.sft_gate.outputs.run_dpo == 'true'
+        run: >-
+          uv run python -m ai.posttrain dpo
+          --model ai/outputs/sft-merged
+          --data ai/data/training/dpo.jsonl
+          --output-dir ai/outputs/dpo-adapter
+      - name: Compare SFT versus SFT plus DPO
+        if: steps.sft_gate.outputs.run_dpo == 'true'
+        run: >-
+          uv run python -m ai.model_eval
+          --base ai/outputs/sft-merged
+          --candidate ai/outputs/dpo-adapter
+          --data ai/data/training/sft.jsonl
+          --output ai/results/dpo-comparison.json
+          --max-samples 12
+          --max-new-tokens 64
+          --min-f1-gain 0.0
+      - name: Print experiment summary
+        if: always()
+        shell: bash
+        run: |
+          echo '--- SFT comparison ---'
+          test -f ai/results/sft-comparison.json && cat ai/results/sft-comparison.json || true
+          echo '--- DPO comparison ---'
+          test -f ai/results/dpo-comparison.json && cat ai/results/dpo-comparison.json || true
