@@ -1,9 +1,4 @@
-from __future__ import annotations
-
-from typing import Any
-
-
-QUALITY_REPORT: dict[str, Any] = {
+QUALITY_REPORT: dict[str, object] = {
     "boundary": "synthetic portfolio evaluation; not clinical validation",
     "clinical_validation": False,
     "gates": [
