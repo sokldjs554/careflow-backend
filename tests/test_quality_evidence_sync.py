@@ -3,7 +3,6 @@ import pathlib
 
 from app.quality_report import QUALITY_REPORT
 
-
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
