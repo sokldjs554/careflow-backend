@@ -18,7 +18,7 @@ def test_demo_page_is_available(client: TestClient) -> None:
     response = client.get("/")
     assert response.status_code == 200
     assert "CareFlow" in response.text
-    assert "합성 데이터" in response.text
+    assert "합성·비식별 데이터" in response.text
 
 
 def test_capabilities_do_not_expose_secrets(client: TestClient) -> None:
