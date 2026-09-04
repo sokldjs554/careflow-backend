@@ -85,10 +85,14 @@ def _provider_neutral_demo_html() -> str:
     evidence_flow = (
         '<div class="architecture" style="margin:0 0 12px">'
         '<div class="arch-flow" style="grid-template-columns:repeat(4,1fr)">'
-        '<div class="arch-node"><b>01 · 발화 수집</b><span>sequence와 speaker를 보존</span></div>'
-        '<div class="arch-node"><b>02 · Evidence map</b><span>원문 sequence를 섹션 근거로 연결</span></div>'
-        '<div class="arch-node"><b>03 · S / O / P</b><span>근거가 있는 초안만 편집·검토</span></div>'
-        '<div class="arch-node"><b>04 · Review / Purge</b><span>검토 전환 또는 정상 완료 후 삭제</span></div>'
+        '<div class="arch-node"><b>01 · 발화 수집</b>'
+        '<span>sequence와 speaker를 보존</span></div>'
+        '<div class="arch-node"><b>02 · Evidence map</b>'
+        '<span>원문 sequence를 섹션 근거로 연결</span></div>'
+        '<div class="arch-node"><b>03 · S / O / P</b>'
+        '<span>근거가 있는 초안만 편집·검토</span></div>'
+        '<div class="arch-node"><b>04 · Review / Purge</b>'
+        '<span>검토 전환 또는 정상 완료 후 삭제</span></div>'
         '</div></div>'
         + console_marker
     )
