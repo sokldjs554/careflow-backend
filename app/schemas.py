@@ -137,14 +137,35 @@ class AuditEventResponse(StrictModel):
 
 
 class OperationsResponse(StrictModel):
+    environment: str
     database_ready: bool
+    database_backend: Literal["postgresql", "sqlite", "other"]
     transcript_store_ready: bool
+    transcript_store_backend: Literal["redis", "memory"]
     session_counts: dict[str, int]
     total_sessions: int
     review_queue: int
     transcript_ttl_seconds: int
+    note_generator_mode: Literal["deterministic", "anthropic"]
     note_generator_version: str
+    speech_enabled: bool
     speech_recognizer_version: str | None
+
+
+class QualityGateResponse(StrictModel):
+    key: str
+    title: str
+    status: Literal["adopted", "rejected", "verified", "verified_not_adopted"]
+    decision: str
+    summary: str
+    metrics: dict[str, float | int | str]
+    run_id: int | None = None
+
+
+class QualityReportResponse(StrictModel):
+    boundary: str
+    clinical_validation: bool
+    gates: list[QualityGateResponse]
 
 
 class PurgeResponse(StrictModel):
