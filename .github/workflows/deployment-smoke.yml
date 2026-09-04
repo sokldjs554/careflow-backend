@@ -1,0 +1,36 @@
+name: Deployment Smoke
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: careflow-deployment-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  live-demo-smoke:
+    name: Live Render demo contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      BASE_URL: https://careflow-demo.onrender.com
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Verify live UI, runtime contracts and synthetic E2E
+        run: python scripts/deployment_smoke.py
+      - name: Upload UI diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: deployment-smoke-ui
+          path: |
+            live-demo.html
+            deployment-smoke-diagnostics.json
+          if-no-files-found: ignore
+          retention-days: 1

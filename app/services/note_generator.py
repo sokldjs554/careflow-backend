@@ -27,15 +27,17 @@ class DeterministicDemoGenerator:
     async def generate(self, chunks: list[TranscriptChunk]) -> GeneratedDraft:
         patient = [chunk for chunk in chunks if chunk.speaker == "patient"]
         clinician = [chunk for chunk in chunks if chunk.speaker == "clinician"]
-        objective = [
-            chunk
-            for chunk in clinician
-            if any(token in chunk.text for token in ("관찰", "표정", "말투", "측정", "확인"))
-        ]
         plan = [
             chunk
             for chunk in clinician
             if any(token in chunk.text for token in ("계획", "예약", "다음", "검사", "추적"))
+        ]
+        plan_sequences = {chunk.sequence for chunk in plan}
+        objective = [
+            chunk
+            for chunk in clinician
+            if chunk.sequence not in plan_sequences
+            and any(token in chunk.text for token in ("관찰", "표정", "말투", "측정", "확인"))
         ]
 
         subjective_text = self._join(patient) or "환자의 주관적 진술이 기록되지 않았습니다."
