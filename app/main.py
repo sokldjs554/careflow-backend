@@ -107,6 +107,10 @@ def _provider_neutral_demo_html() -> str:
         '$("runtime-text").textContent="runtime 확인 실패";': (
             '$("runtime-text").textContent="시스템 상태 확인 실패";'
         ),
+        "state.transcriptPurged=result.transcript_purged;": (
+            "state.transcriptPurged=result.transcript_purged;"
+            "if(result.transcript_purged){state.transcript=[];renderTranscript()}"
+        ),
     }
     for source, target in replacements.items():
         html = html.replace(source, target)
