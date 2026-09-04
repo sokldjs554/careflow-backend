@@ -2,6 +2,7 @@ from typing import cast
 
 from fastapi import APIRouter, Header, Query, Request
 
+from app.quality_report import QUALITY_REPORT
 from app.schemas import (
     AuditEventResponse,
     CapabilitiesResponse,
@@ -11,6 +12,7 @@ from app.schemas import (
     NoteDraftResponse,
     OperationsResponse,
     PurgeResponse,
+    QualityReportResponse,
     ReviewDraftRequest,
     ReviewDraftResponse,
     SessionResponse,
@@ -28,6 +30,14 @@ def _service(request: Request) -> SessionService:
     return cast(SessionService, request.app.state.session_service)
 
 
+def _database_backend(url: str) -> str:
+    if url.startswith("postgresql"):
+        return "postgresql"
+    if url.startswith("sqlite"):
+        return "sqlite"
+    return "other"
+
+
 @router.get("/capabilities", response_model=CapabilitiesResponse)
 async def get_capabilities(request: Request) -> CapabilitiesResponse:
     service = _service(request)
@@ -41,8 +51,23 @@ async def get_capabilities(request: Request) -> CapabilitiesResponse:
 
 @router.get("/operations", response_model=OperationsResponse)
 async def get_operations(request: Request) -> OperationsResponse:
+    service = _service(request)
     recognizer = cast(SpeechRecognizer | None, request.app.state.speech_recognizer)
-    return await _service(request).operations(recognizer.version if recognizer else None)
+    base = await service.operations(recognizer.version if recognizer else None)
+    return base.model_copy(
+        update={
+            "environment": service.settings.environment,
+            "database_backend": _database_backend(service.settings.database_url),
+            "transcript_store_backend": "redis" if service.settings.redis_url else "memory",
+            "note_generator_mode": service.settings.note_generator_mode,
+            "speech_enabled": recognizer is not None,
+        }
+    )
+
+
+@router.get("/quality", response_model=QualityReportResponse)
+async def get_quality_report() -> QualityReportResponse:
+    return QualityReportResponse.model_validate(QUALITY_REPORT)
 
 
 @router.post("/sessions", response_model=SessionResponse, status_code=201)

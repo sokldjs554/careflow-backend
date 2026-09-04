@@ -42,97 +42,81 @@ _DEMO_HTML_PATH = Path(__file__).parent / "static" / "index.html"
 
 
 def _provider_neutral_demo_html() -> str:
-    """Keep implementation-provider details out of the product-facing demo UI."""
+    """Serve the product demo with stable public-facing boundaries and state semantics."""
     html = _DEMO_HTML_PATH.read_text(encoding="utf-8")
-    replacements = {
-        "REVIEW WORKSPACE · SYNTHETIC PORTFOLIO": "상담 기록 검토",
-        "runtime 확인 중": "시스템 상태 확인 중",
-        "Runtime": "입력 상태",
-        "Claude / Whisper": "음성 인식 상태",
-        "Claude 초안 생성": "초안 생성",
-        "Claude 초안이 여기에 표시됩니다.": "초안이 여기에 표시됩니다.",
-        "합성 시나리오, 음성 파일, 마이크 입력을 같은 WebSocket 상태 머신으로 처리합니다.": (
-            "합성 시나리오와 마이크 입력을 같은 세션 흐름으로 처리합니다."
-        ),
-        "합성 시나리오, 음성 파일, 마이크 입력을 같은 상태 머신으로 처리합니다.": (
-            "합성 시나리오와 마이크 입력을 같은 세션 흐름으로 처리합니다."
-        ),
-        '<button class="btn secondary" id="upload-audio">음성 파일</button>': (
-            '<button class="btn secondary demo-only" id="upload-audio">음성 파일</button>'
-        ),
-        (
-            '$("runtime-text").textContent = `${cap.note_generator_version} · '
-            '${cap.speech_recognizer_version || "STT off"}`;'
-        ): '$("runtime-text").textContent = "시스템 정상";',
-        (
-            '$("runtime-text").textContent=`${cap.note_generator_version} · '
-            '${cap.speech_recognizer_version||"STT off"}`;'
-        ): '$("runtime-text").textContent="시스템 정상";',
-        (
-            '$("metric-runtime").textContent = cap.note_generator_version'
-            '.replace("anthropic-", "").replace("-sop-v1", "");'
-        ): (
-            '$("metric-runtime").textContent = cap.speech_enabled ? '
-            '"사용 가능" : "텍스트 입력";'
-        ),
-        (
-            '$("metric-runtime").textContent=cap.note_generator_version'
-            '.replace("anthropic-","").replace("-sop-v1","");'
-        ): (
-            '$("metric-runtime").textContent=cap.speech_enabled?'
-            '"사용 가능":"텍스트 입력";'
-        ),
-        (
-            '$("metric-runtime-sub").textContent = '
-            'cap.speech_recognizer_version || "STT disabled";'
-        ): (
-            '$("metric-runtime-sub").textContent = cap.speech_enabled ? '
-            '"음성 인식 활성" : "음성 인식 비활성";'
-        ),
-        (
-            '$("metric-runtime-sub").textContent='
-            'cap.speech_recognizer_version||"STT disabled";'
-        ): (
-            '$("metric-runtime-sub").textContent=cap.speech_enabled?'
-            '"음성 인식 활성":"음성 인식 비활성";'
-        ),
-        (
-            '$("draft-version").textContent = `${draft.generator_version} · '
-            '${formatTime(draft.generated_at)}`;'
-        ): '$("draft-version").textContent = `초안 · ${formatTime(draft.generated_at)}`;',
-        (
-            '$("draft-version").textContent=`${draft.generator_version} · '
-            '${formatTime(draft.generated_at)}`;'
-        ): '$("draft-version").textContent=`초안 · ${formatTime(draft.generated_at)}`;',
-        '$("runtime-text").textContent="runtime 확인 실패";': (
-            '$("runtime-text").textContent="시스템 상태 확인 실패";'
-        ),
-        "state.transcriptPurged=result.transcript_purged;": (
-            "state.transcriptPurged=result.transcript_purged;"
-            "if(result.transcript_purged){state.transcript=[];renderTranscript()}"
-        ),
-    }
-    for source, target in replacements.items():
-        html = html.replace(source, target)
+    html = html.replace(
+        "실제 환자·임상 데이터가 아닌 합성 데이터만 사용합니다.",
+        "실제 환자·임상 데이터가 아닌 합성·비식별 데이터만 사용합니다.",
+    )
 
-    visual_polish = """
-    <style id="careflow-product-polish">
-      .topbar{height:68px;padding:0 22px;gap:16px}
-      .brand{font-size:21px;font-weight:900;letter-spacing:-.025em}
-      .brand-mark{width:32px;height:32px;border-color:rgba(94,234,212,.5)}
-      .top-divider{height:26px;background:rgba(255,255,255,.22)}
-      .product-label{font-size:13px;color:#f1f5fb;font-weight:800;letter-spacing:0}
-      .runtime-pill{font-size:12px;font-weight:750;color:#f7f9fc;
-        background:rgba(255,255,255,.075);border-color:rgba(255,255,255,.22);padding:8px 12px}
-      .dot{width:8px;height:8px}
-      .metric-label{font-size:10px;color:#718096;letter-spacing:.055em}
-      .metric-value{font-size:18px;font-weight:900}
-      .metric-sub{font-size:10px;color:#7d899b;line-height:1.4}
-      .notice{font-size:11.5px}
-      .demo-only{display:none!important}
-    </style>
-    """
-    html = html.replace("</head>", f"{visual_polish}</head>")
+    old_lifecycle = (
+        'function updateLifecycle(status,purged,review){const order=status==="idle"?0:'
+        'status==="created"?1:status==="streaming"?2:status==="processing"?3:'
+        'status==="review_required"?4:status==="ready"?4:status==="purged"?5:3;'
+        'document.querySelectorAll(".step").forEach((n,i)=>{n.classList.remove('
+        '"done","current");if(i<order)n.classList.add("done");'
+        'if(i===order&&order<5)n.classList.add("current")});'
+    )
+    new_lifecycle = (
+        'function updateLifecycle(status,purged,review){const order=status==="created"?0:'
+        'status==="streaming"?1:status==="processing"?2:'
+        'status==="review_required"?3:null;'
+        'document.querySelectorAll(".step").forEach((n,i)=>{n.classList.remove('
+        '"done","current");if(order!==null&&i<order)n.classList.add("done");'
+        'if(order!==null&&i===order)n.classList.add("current")});'
+    )
+    html = html.replace(old_lifecycle, new_lifecycle)
+
+    old_coverage = (
+        "function computeCoverage(draft,sourceTranscript){if(!draft||!sourceTranscript.length)"
+        "return null;const refs=new Set((draft.evidence||[]).flatMap(e=>e.source_sequences));"
+        "const seqs=new Set(sourceTranscript.map(t=>t.sequence));let hit=0;seqs.forEach(s=>"
+        "{if(refs.has(s))hit++});return Math.round((hit/seqs.size)*100)}"
+    )
+    new_coverage = (
+        'function computeCoverage(draft,sourceTranscript){if(!draft||!sourceTranscript.length)'
+        'return null;const required=["subjective","objective","plan"];const covered=new Set('
+        '(draft.evidence||[]).filter(e=>e.source_sequences?.length).map(e=>e.section));return '
+        'Math.round(required.filter(section=>covered.has(section)).length/required.length*100)}'
+    )
+    html = html.replace(old_coverage, new_coverage)
+
+    console_marker = '<div class="console-grid">'
+    evidence_flow = (
+        '<div class="architecture" style="margin:0 0 12px">'
+        '<div class="arch-flow" style="grid-template-columns:repeat(4,1fr)">'
+        '<div class="arch-node"><b>01 · 발화 수집</b>'
+        '<span>sequence와 speaker를 보존</span></div>'
+        '<div class="arch-node"><b>02 · Evidence map</b>'
+        '<span>원문 sequence를 섹션 근거로 연결</span></div>'
+        '<div class="arch-node"><b>03 · S / O / P</b>'
+        '<span>근거가 있는 초안만 편집·검토</span></div>'
+        '<div class="arch-node"><b>04 · Review / Purge</b>'
+        '<span>검토 전환 또는 정상 완료 후 삭제</span></div>'
+        '</div></div>'
+        + console_marker
+    )
+    html = html.replace(console_marker, evidence_flow, 1)
+
+    quality_heading = (
+        '<section class="view" id="view-quality"><div class="section-title">'
+        '<h2>AI Quality Gate</h2><p>기법을 사용했다는 사실보다 같은 평가셋에서 '
+        '채택·미채택을 결정한 근거를 보여줍니다.</p></div>'
+    )
+    selection_path = quality_heading + (
+        '<div class="architecture" style="margin:0 0 12px">'
+        '<div class="section-title" style="margin:0 0 10px">'
+        '<h2>Post-training selection path</h2>'
+        '<p>같은 holdout과 회귀 기준으로 다음 단계 승격 여부를 결정했습니다.</p>'
+        '</div><div class="arch-flow" style="grid-template-columns:repeat(3,1fr)">'
+        '<div class="arch-node"><b>BASE</b><span>reference-token F1 · 0.0648</span></div>'
+        '<div class="arch-node" style="border-color:#8fd7c2;background:#f3fbf8">'
+        '<b>SFT · ADOPTED</b><span>0.1244 · Δ +0.0596 · safety regression 0</span></div>'
+        '<div class="arch-node" style="border-color:#e6c57f;background:#fffaf0">'
+        '<b>DPO · REJECTED</b><span>0.1093 · Δ -0.0151 · SFT 유지</span></div>'
+        '</div></div>'
+    )
+    html = html.replace(quality_heading, selection_path)
     return html
 
 
