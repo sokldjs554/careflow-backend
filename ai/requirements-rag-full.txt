@@ -1,0 +1,2 @@
+-r requirements-smoke.txt
+sentence-transformers>=5,<6
