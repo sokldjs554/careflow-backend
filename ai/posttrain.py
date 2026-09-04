@@ -440,35 +440,85 @@ def compare_sft(
     return result
 
 
-def train_dpo(data: Path, model_name: str, output_dir: Path) -> None:
+def train_dpo(
+    data: Path,
+    model_name: str,
+    output_dir: Path,
+    device: str = "auto",
+) -> None:
+    import torch
     from datasets import Dataset
     from trl import DPOConfig, DPOTrainer
 
     train_rows = _load_split(data, "train")
     valid_rows = _load_split(data, "validation")
+    use_cuda = device != "cpu" and torch.cuda.is_available()
+    if device == "cuda" and not use_cuda:
+        raise RuntimeError("CUDA was requested but is not available")
+
+    training_model = model_name
+    model_path = Path(model_name)
+    adapter_config = model_path / "adapter_config.json"
+    merged_dir: Path | None = None
+    if model_path.exists() and adapter_config.exists():
+        from peft import AutoPeftModelForCausalLM, PeftConfig
+        from transformers import AutoTokenizer
+
+        peft_config = PeftConfig.from_pretrained(model_name)
+        base_name = str(peft_config.base_model_name_or_path)
+        merged_dir = output_dir.parent / "sft-merged-for-dpo"
+        tokenizer = AutoTokenizer.from_pretrained(base_name)
+        sft_model = AutoPeftModelForCausalLM.from_pretrained(
+            model_name,
+            dtype=torch.bfloat16 if use_cuda else torch.float32,
+            low_cpu_mem_usage=True,
+        ).merge_and_unload()
+        sft_model.save_pretrained(str(merged_dir))
+        tokenizer.save_pretrained(str(merged_dir))
+        del sft_model
+        gc.collect()
+        training_model = str(merged_dir)
+
     args = DPOConfig(
         output_dir=str(output_dir),
         num_train_epochs=1,
         learning_rate=5e-6,
-        per_device_train_batch_size=1,
-        per_device_eval_batch_size=1,
+        per_device_train_batch_size=1 if not use_cuda else 2,
+        per_device_eval_batch_size=1 if not use_cuda else 2,
         gradient_accumulation_steps=8,
         beta=0.1,
         eval_strategy="epoch",
         save_strategy="epoch",
+        save_total_limit=1,
+        max_length=256,
+        use_cpu=not use_cuda,
         report_to="none",
         seed=42,
     )
     trainer = DPOTrainer(
-        model=model_name,
+        model=training_model,
         args=args,
         train_dataset=Dataset.from_list(train_rows),
         eval_dataset=Dataset.from_list(valid_rows),
         peft_config=_lora_config(),
     )
-    trainer.train()
+    train_result = trainer.train()
     trainer.save_model(str(output_dir))
-    print({"status": "completed", "adapter": str(output_dir)})
+    trainer.processing_class.save_pretrained(str(output_dir))
+    print(
+        json.dumps(
+            {
+                "status": "completed",
+                "mode": "lora-cpu" if not use_cuda else "qlora",
+                "source_model": model_name,
+                "training_model": training_model,
+                "adapter": str(output_dir),
+                "train_loss": round(float(train_result.training_loss), 6),
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
 
 
 def main() -> None:
@@ -511,6 +561,7 @@ def main() -> None:
     dpo_parser.add_argument(
         "--output-dir", type=Path, default=Path("ai/outputs/dpo-adapter")
     )
+    dpo_parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
 
     args = parser.parse_args()
     if args.command == "generate":
@@ -526,7 +577,7 @@ def main() -> None:
     elif args.command == "compare-sft":
         compare_sft(args.base, args.candidate, args.data, args.output)
     else:
-        train_dpo(args.data, args.model, args.output_dir)
+        train_dpo(args.data, args.model, args.output_dir, device=args.device)
 
 
 if __name__ == "__main__":
