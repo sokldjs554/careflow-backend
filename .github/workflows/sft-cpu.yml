@@ -1,4 +1,4 @@
-name: SFT CPU Experiment
+name: SFT CPU Gate
 
 on:
   push:
@@ -12,10 +12,10 @@ permissions:
   contents: read
 
 jobs:
-  posttrain:
-    name: Qwen2.5-0.5B SFT gate + conditional DPO
-    runs-on: ubuntu-latest
-    timeout-minutes: 90
+  sft-gate:
+    name: Qwen2.5-0.5B SFT holdout gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
     env:
       HF_HUB_DISABLE_TELEMETRY: "1"
       TOKENIZERS_PARALLELISM: "false"
@@ -29,13 +29,24 @@ jobs:
           uv sync --locked --extra dev
           uv pip install torch --index-url https://download.pytorch.org/whl/cpu
           uv pip install -r ai/requirements-posttrain-cpu.txt
-      - name: Generate reviewed synthetic SFT and DPO contracts
+          uv run python - <<'PY'
+          import os
+          import torch
+          print({
+              "cpu_count": os.cpu_count(),
+              "torch_threads": torch.get_num_threads(),
+              "torch_interop_threads": torch.get_num_interop_threads(),
+              "torch_version": torch.__version__,
+          })
+          PY
+      - name: Generate reviewed synthetic SFT contracts
         run: uv run python -m ai.posttrain generate --count 120
-      - name: Train Qwen2.5 0.5B LoRA on CPU and merge adapter
+      - name: Train Qwen2.5 0.5B LoRA on CPU
         run: >-
           uv run python -m ai.posttrain sft
           --model Qwen/Qwen2.5-0.5B-Instruct
           --device cpu
+          --no-merge
       - name: Compare base versus SFT on held-out split
         run: >-
           uv run python -m ai.model_eval
@@ -46,44 +57,20 @@ jobs:
           --max-samples 12
           --max-new-tokens 64
           --min-f1-gain 0.02
-      - name: Decide whether DPO is allowed
-        id: sft_gate
-        shell: bash
-        run: |
-          decision=$(uv run python -c 'import json; print(json.load(open("ai/results/sft-comparison.json", encoding="utf-8"))["decision"])')
-          echo "decision=$decision" >> "$GITHUB_OUTPUT"
-          if [ "$decision" = "adopt" ]; then
-            echo "run_dpo=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "run_dpo=false" >> "$GITHUB_OUTPUT"
-          fi
-          echo "SFT gate decision: $decision"
-      - name: Build smaller DPO preference split
-        if: steps.sft_gate.outputs.run_dpo == 'true'
-        run: uv run python -m ai.posttrain generate --count 60
-      - name: Train DPO from merged SFT model
-        if: steps.sft_gate.outputs.run_dpo == 'true'
-        run: >-
-          uv run python -m ai.posttrain dpo
-          --model ai/outputs/sft-merged
-          --data ai/data/training/dpo.jsonl
-          --output-dir ai/outputs/dpo-adapter
-      - name: Compare SFT versus SFT plus DPO
-        if: steps.sft_gate.outputs.run_dpo == 'true'
-        run: >-
-          uv run python -m ai.model_eval
-          --base ai/outputs/sft-merged
-          --candidate ai/outputs/dpo-adapter
-          --data ai/data/training/sft.jsonl
-          --output ai/results/dpo-comparison.json
-          --max-samples 12
-          --max-new-tokens 64
-          --min-f1-gain 0.0
-      - name: Print experiment summary
+      - name: Print SFT gate decision
         if: always()
         shell: bash
         run: |
           echo '--- SFT comparison ---'
           test -f ai/results/sft-comparison.json && cat ai/results/sft-comparison.json || true
-          echo '--- DPO comparison ---'
-          test -f ai/results/dpo-comparison.json && cat ai/results/dpo-comparison.json || true
+      - name: Preserve SFT adapter and gate evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: qwen25-sft-gate
+          path: |
+            ai/outputs/sft-adapter
+            ai/results/sft-comparison.json
+            ai/data/training/sft.jsonl
+          if-no-files-found: ignore
+          retention-days: 3
