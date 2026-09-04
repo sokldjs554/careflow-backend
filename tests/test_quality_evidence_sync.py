@@ -1,14 +1,16 @@
 import json
-from pathlib import Path
+import pathlib
 
 from app.quality_report import QUALITY_REPORT
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
 def _gates() -> dict[str, dict[str, object]]:
-    return {str(item["key"]): item for item in QUALITY_REPORT["gates"]}
+    gates = QUALITY_REPORT["gates"]
+    assert isinstance(gates, list)
+    return {str(item["key"]): item for item in gates}
 
 
 def test_sft_quality_card_matches_persisted_result() -> None:
@@ -19,6 +21,7 @@ def test_sft_quality_card_matches_persisted_result() -> None:
     )
     gate = _gates()["sft"]
     metrics = gate["metrics"]
+    assert isinstance(metrics, dict)
 
     assert gate["status"] == persisted["decision"] + "ed"
     assert metrics["base_reference_token_f1"] == persisted["base"][
@@ -41,6 +44,7 @@ def test_dpo_quality_card_matches_persisted_result() -> None:
     )
     gate = _gates()["dpo"]
     metrics = gate["metrics"]
+    assert isinstance(metrics, dict)
 
     assert gate["status"] == "rejected"
     assert persisted["decision"] == "reject"
@@ -62,6 +66,7 @@ def test_rag_quality_card_matches_persisted_result() -> None:
     )
     gate = _gates()["rag"]
     metrics = gate["metrics"]
+    assert isinstance(metrics, dict)
 
     assert gate["status"] == "verified_not_adopted"
     assert persisted["decision"] == "not_adopted_on_current_regression_set"
