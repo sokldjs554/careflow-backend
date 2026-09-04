@@ -18,13 +18,13 @@ benchmark:
 	uv run python scripts/benchmark.py
 
 live-claude:
-	uv run python scripts/live_claude_check.py
+	LLM_TIMEOUT_SECONDS=60 uv run python scripts/live_claude_check.py
 
 run:
 	uv run uvicorn app.main:app --host 0.0.0.0 --reload --port 8000
 
 run-live:
-	NOTE_GENERATOR_MODE=anthropic SPEECH_RECOGNITION_MODE=faster_whisper uv run uvicorn app.main:app --host 0.0.0.0 --reload --port 8000
+	NOTE_GENERATOR_MODE=anthropic SPEECH_RECOGNITION_MODE=faster_whisper LLM_TIMEOUT_SECONDS=60 uv run uvicorn app.main:app --host 0.0.0.0 --reload --port 8000
 
 ai-sync:
 	uv pip install -r ai/requirements-smoke.txt
