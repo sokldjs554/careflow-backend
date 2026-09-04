@@ -8,9 +8,9 @@
 | --- | --- | --- | --- |
 | RAG | Qdrant + lexical + RRF + BGE-M3 + CrossEncoder + LangGraph | smoke + full semantic 실제 실행 | 더 큰 허용 데이터에서 재평가 |
 | Multimodal | EMA + Text late fusion baseline | 합성 데이터 sanity check 완료 | 허용된 실제/공개 데이터에서 재평가 |
-| SFT | Qwen2.5 LoRA/QLoRA pipeline | Qwen2.5-0.5B CPU LoRA 1 epoch 실제 학습 완료 | corrected Base vs SFT holdout gate 재실행 |
+| SFT | Qwen2.5 LoRA/QLoRA pipeline | Qwen2.5-0.5B CPU LoRA 1 epoch 실제 학습 완료 | corrected Base vs SFT holdout gate 재실행 중 |
 | DPO | chosen/rejected + DPOTrainer pipeline | 데이터 계약 120쌍 통과 | SFT가 게이트를 넘은 경우에만 학습 |
-| Evaluation | rule gate + LLM-as-a-Judge adapter/CLI | CI rule gate 완료 | Codespace live judge 결과 기록 |
+| Evaluation | rule gate + Claude Sonnet 5 LLM-as-a-Judge | CI rule gate + live synthetic 6건 실제 실행 | 더 큰 허용 평가셋/전문가 평가 시 재검증 |
 
 ## 검색 실험 — 2026-09-04
 
@@ -105,22 +105,39 @@ SFT는 다음 세 조건을 모두 만족해야 DPO 단계로 넘어갑니다.
 
 DPO도 SFT와 같은 원칙으로 다시 평가합니다. 좋은 결과가 나오지 않으면 `SFT/DPO를 사용했다`는 이유만으로 제품에 채택하지 않습니다.
 
-## LLM-as-a-Judge
+## LLM-as-a-Judge — 실제 실행
 
-`anthropic_judge()`와 `scripts/live_ai_judge.py`는 다음 rubric을 1~5로 평가합니다.
+`anthropic_judge()`와 `scripts/live_ai_judge.py`는 Claude Sonnet 5의 Structured Outputs를 사용해 다음 rubric을 1~5로 평가합니다.
 
 - groundedness
 - completeness
 - safety
 - clarity
 
-CI에서는 비용과 외부 의존성 때문에 호출하지 않습니다. Codespace `.env`에 API key가 로드된 상태에서는 다음으로 합성 positive/negative 6건을 실제 평가할 수 있습니다.
+2026-09-04 Codespace에서 합성 positive 3건 + 의도적으로 잘못된 negative 3건, 총 **6건을 실제 API로 평가**했습니다.
+
+| 그룹 | Groundedness | Completeness | Safety | Clarity |
+| --- | ---: | ---: | ---: | ---: |
+| positive 3건 평균 | **5.000** | **4.333** | **5.000** | **5.000** |
+| negative 3건 평균 | **1.000** | **2.000** | **2.000** | **3.333** |
+| 전체 6건 평균 | 3.000 | 3.167 | 3.500 | 4.167 |
+
+의도적으로 삽입한 실패 예제에서 Judge가 다음 위험을 낮은 점수로 구분했습니다.
+
+- 원문에 없는 `3개월` 기간 추가 → groundedness `1`
+- 증상만 있는 원문을 `불면증`으로 진단 → groundedness `1`, safety `1`
+- 용량 변경 대화 없이 증량 권고 → groundedness `1`, safety `1`
+
+따라서 전체 평균 자체를 품질 점수로 해석하지 않고, **정상 초안과 환각·진단·처방 위반 예제를 rubric이 구분하는지 확인한 소규모 synthetic evaluation**으로 기록합니다. 전문의 평가나 임상 검증이 아닙니다.
 
 ```bash
+make anthropic-auth
 make judge-live
 ```
 
-결과는 `ai/results/llm-judge-live.json`에 저장합니다. 전문의 평가를 수행하지 않은 상태에서는 임상 검증으로 표현하지 않습니다.
+원시 결과: [`results/llm-judge-live.json`](results/llm-judge-live.json)
+
+CI에서는 비용과 외부 의존성 때문에 live API를 호출하지 않습니다.
 
 ## 빠른 검증
 
