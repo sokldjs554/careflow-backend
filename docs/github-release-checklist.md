@@ -1,6 +1,6 @@
 # GitHub 공개 전 체크리스트
 
-이 문서는 `careflow-v3-jobfit`을 `main`에 병합하거나 저장소를 공개하기 직전에 확인합니다. **V3 병합 게이트와 공개 게이트를 구분**합니다. 실제 환자 데이터·임상 성능 검증은 범위에 포함하지 않습니다.
+CareFlow V3는 `main` 병합과 최종 CI까지 완료되었습니다. 이 문서는 이제 **저장소 공개·지원 제출 직전 게이트**를 추적합니다. 실제 환자 데이터·임상 성능 검증은 범위에 포함하지 않습니다.
 
 ## 1. 실기능 검증
 
@@ -49,16 +49,19 @@ DATABASE_URL=sqlite+aiosqlite:///./release-check.db uv run alembic upgrade head
 - [x] Docker runtime image build CI
 - [x] AI lab smoke / retrieval / multimodal / evaluation / SFT·DPO data contract CI
 - [x] DPO bounded workflow 자체 성공
-- [ ] 최종 문서·결과 JSON 반영 commit 기준 branch/PR CI green 확인
+- [x] V3 최종 branch/PR CI green
+- [x] V3 `main` 병합 후 CI green — run `33893105221`
 
 ## 4. 비밀·개인 데이터
 
 - [x] `.env`, `*.db`, `.venv`, cache, recording 파일 Git 제외
 - [x] 커밋 파일과 공개 산출물에 API key 없음
 - [x] 실제 환자·지인의 음성, 이름, 연락처, 진료정보 없음
-- [ ] 공개 전 별도 secret scan (`gitleaks` 또는 동등 도구) — 공개 게이트
+- [x] tracked-artifact guard 통과 — `.env`, DB, audio, 생성 학습 데이터, model output 미추적
+- [x] Gitleaks full-history scan 통과 — public-readiness run `33893714995`
+- [x] 향후 PR/push에서도 secret/history guard가 자동 실행되도록 workflow 추가
 
-## 5. 공개 설명
+## 5. 공개 설명·라이선스
 
 - [x] 독립 포트폴리오이며 회사 내부 구현이 아니라는 문구
 - [x] 의료기기·진단·치료 서비스가 아니라는 문구
@@ -66,24 +69,28 @@ DATABASE_URL=sqlite+aiosqlite:///./release-check.db uv run alembic upgrade head
 - [x] 발화 단위 준실시간이며 continuous partial ASR 아님
 - [x] AWS는 Terraform 시작점이며 실제 배포 아님
 - [x] 실제 의료정보 외부 LLM 처리 금지 경계
-- [ ] 저장소 공개 전 라이선스 선택 및 외부 라이브러리 라이선스 최종 확인
+- [ ] 프로젝트 라이선스 선택 — 현재 저장소 metadata는 `license: null`
+- [ ] 외부 라이브러리 라이선스 최종 확인
 
 ## 6. V3 병합
 
 - [x] Draft PR #2 생성 (`careflow-v3-jobfit → main`)
 - [x] RAG/Multimodal/SFT/DPO/Evaluation 실험 blocker 해결
 - [x] SFT/DPO 실제 결과와 adopt/reject 결정 문서화
-- [ ] 최종 PR CI green 확인
-- [ ] Draft 해제
-- [ ] `main` 병합
+- [x] 최종 PR CI green 확인
+- [x] Draft 해제
+- [x] `main` squash merge — `bd728cd4decdba18a7baf639b380d2b38e1fe01c`
+- [x] 병합 후 `main` CI green
 
 ## 7. 공개·지원 제출 후속
 
-V3 코드 병합과 별개로 공개/지원 직전에 수행합니다.
+V3 기능 완성과 별개로 실제 공개/지원 직전에 수행합니다.
 
-- [ ] 깨끗한 새 환경에서 README 명령 재현
-- [ ] secret scan
-- [ ] license 확인
-- [ ] 공개 후 외부 README 링크와 CI 상태 확인
+- [ ] 깨끗한 새 환경에서 README 설치·실행 절차 최종 재현
+- [x] secret/history scan
+- [ ] 프로젝트/외부 의존성 license 확인
+- [ ] 저장소 공개 전 visibility 변경 최종 결정 — 현재 `private`
+- [ ] 공개 후 외부에서 README 링크와 CI 상태 확인
 - [ ] 60–90초 데모 GIF/영상은 합성 데이터만 사용
+- [ ] 실제 마이크 검증을 할 경우 비식별 합성/자체 녹음만 사용
 - [ ] 지원 PDF와 GitHub README의 수치·한계 대조
