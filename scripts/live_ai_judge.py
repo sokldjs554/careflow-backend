@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 
-from ai.lab import anthropic_judge
+from ai.judge import anthropic_judge
+from app.config import Settings
 
 CASES = [
     {
@@ -41,10 +41,15 @@ CASES = [
 
 
 def main() -> None:
-    api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
-    if not api_key:
-        raise RuntimeError("ANTHROPIC_API_KEY is required")
-    model = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-5").strip() or "claude-sonnet-5"
+    settings = Settings()
+    api_key = (
+        settings.anthropic_api_key.get_secret_value()
+        if settings.anthropic_api_key is not None
+        else ""
+    )
+    if not api_key.strip():
+        raise RuntimeError("ANTHROPIC_API_KEY is required in .env or environment")
+    model = settings.anthropic_model.strip() or "claude-sonnet-5"
 
     rows = []
     for case in CASES:
@@ -53,6 +58,7 @@ def main() -> None:
             source=case["source"],
             candidate=case["candidate"],
             model=model,
+            timeout_seconds=settings.llm_timeout_seconds,
         )
         rows.append({"case_id": case["id"], **judged})
 
