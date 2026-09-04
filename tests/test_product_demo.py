@@ -30,6 +30,19 @@ def test_product_demo_lifecycle_indices_match_visible_steps(client: TestClient) 
     assert 'if(order!==null&&i===order)n.classList.add("current")' in html
 
 
+def test_product_demo_shows_post_training_selection_path(client: TestClient) -> None:
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert "Post-training selection path" in response.text
+    assert "BASE" in response.text
+    assert "SFT · ADOPTED" in response.text
+    assert "DPO · REJECTED" in response.text
+    assert "0.0648" in response.text
+    assert "0.1244" in response.text
+    assert "0.1093" in response.text
+
+
 def test_quality_report_preserves_adopt_and_reject_decisions(client: TestClient) -> None:
     response = client.get("/v1/quality")
 
