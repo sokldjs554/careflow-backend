@@ -38,7 +38,6 @@ def anthropic_judge(
         json={
             "model": model,
             "max_tokens": 500,
-            "temperature": 0,
             "messages": [{"role": "user", "content": request_text}],
         },
         timeout=timeout_seconds,
