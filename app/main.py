@@ -45,56 +45,89 @@ def _provider_neutral_demo_html() -> str:
     """Keep implementation-provider details out of the product-facing demo UI."""
     html = _DEMO_HTML_PATH.read_text(encoding="utf-8")
     replacements = {
-        "Claude / Whisper": "AI drafting / speech recognition",
-        "Claude 초안 생성": "AI 초안 생성",
-        "Claude 초안이 여기에 표시됩니다.": "AI 초안이 여기에 표시됩니다.",
+        "REVIEW WORKSPACE · SYNTHETIC PORTFOLIO": "상담 기록 검토",
+        "runtime 확인 중": "시스템 상태 확인 중",
+        "Runtime": "입력 상태",
+        "Claude / Whisper": "음성 인식 상태",
+        "Claude 초안 생성": "초안 생성",
+        "Claude 초안이 여기에 표시됩니다.": "초안이 여기에 표시됩니다.",
+        "합성 시나리오, 음성 파일, 마이크 입력을 같은 WebSocket 상태 머신으로 처리합니다.": (
+            "합성 시나리오와 마이크 입력을 같은 세션 흐름으로 처리합니다."
+        ),
+        "합성 시나리오, 음성 파일, 마이크 입력을 같은 상태 머신으로 처리합니다.": (
+            "합성 시나리오와 마이크 입력을 같은 세션 흐름으로 처리합니다."
+        ),
+        '<button class="btn secondary" id="upload-audio">음성 파일</button>': (
+            '<button class="btn secondary demo-only" id="upload-audio">음성 파일</button>'
+        ),
         (
             '$("runtime-text").textContent = `${cap.note_generator_version} · '
             '${cap.speech_recognizer_version || "STT off"}`;'
-        ): (
-            '$("runtime-text").textContent = cap.speech_enabled ? '
-            '"AI drafting · speech ready" : "AI drafting · text only";'
-        ),
+        ): '$("runtime-text").textContent = "시스템 정상";',
         (
             '$("runtime-text").textContent=`${cap.note_generator_version} · '
             '${cap.speech_recognizer_version||"STT off"}`;'
-        ): (
-            '$("runtime-text").textContent=cap.speech_enabled?'
-            '"AI drafting · speech ready":"AI drafting · text only";'
-        ),
+        ): '$("runtime-text").textContent="시스템 정상";',
         (
             '$("metric-runtime").textContent = cap.note_generator_version'
             '.replace("anthropic-", "").replace("-sop-v1", "");'
-        ): '$("metric-runtime").textContent = "AI drafting";',
+        ): (
+            '$("metric-runtime").textContent = cap.speech_enabled ? '
+            '"사용 가능" : "텍스트 입력";'
+        ),
         (
             '$("metric-runtime").textContent=cap.note_generator_version'
             '.replace("anthropic-","").replace("-sop-v1","");'
-        ): '$("metric-runtime").textContent="AI drafting";',
+        ): (
+            '$("metric-runtime").textContent=cap.speech_enabled?'
+            '"사용 가능":"텍스트 입력";'
+        ),
         (
             '$("metric-runtime-sub").textContent = '
             'cap.speech_recognizer_version || "STT disabled";'
         ): (
             '$("metric-runtime-sub").textContent = cap.speech_enabled ? '
-            '"Speech recognition enabled" : "Speech recognition disabled";'
+            '"음성 인식 활성" : "음성 인식 비활성";'
         ),
         (
             '$("metric-runtime-sub").textContent='
             'cap.speech_recognizer_version||"STT disabled";'
         ): (
             '$("metric-runtime-sub").textContent=cap.speech_enabled?'
-            '"Speech recognition enabled":"Speech recognition disabled";'
+            '"음성 인식 활성":"음성 인식 비활성";'
         ),
         (
             '$("draft-version").textContent = `${draft.generator_version} · '
             '${formatTime(draft.generated_at)}`;'
-        ): '$("draft-version").textContent = `AI draft · ${formatTime(draft.generated_at)}`;',
+        ): '$("draft-version").textContent = `초안 · ${formatTime(draft.generated_at)}`;',
         (
             '$("draft-version").textContent=`${draft.generator_version} · '
             '${formatTime(draft.generated_at)}`;'
-        ): '$("draft-version").textContent=`AI draft · ${formatTime(draft.generated_at)}`;',
+        ): '$("draft-version").textContent=`초안 · ${formatTime(draft.generated_at)}`;',
+        '$("runtime-text").textContent="runtime 확인 실패";': (
+            '$("runtime-text").textContent="시스템 상태 확인 실패";'
+        ),
     }
     for source, target in replacements.items():
         html = html.replace(source, target)
+
+    visual_polish = """
+    <style id="careflow-product-polish">
+      .topbar{height:68px;padding:0 22px;gap:16px}
+      .brand{font-size:21px;font-weight:900;letter-spacing:-.025em}
+      .brand-mark{width:32px;height:32px;border-color:rgba(94,234,212,.5)}
+      .top-divider{height:26px;background:rgba(255,255,255,.22)}
+      .product-label{font-size:13px;color:#f1f5fb;font-weight:800;letter-spacing:0}
+      .runtime-pill{font-size:12px;font-weight:750;color:#f7f9fc;background:rgba(255,255,255,.075);border-color:rgba(255,255,255,.22);padding:8px 12px}
+      .dot{width:8px;height:8px}
+      .metric-label{font-size:10px;color:#718096;letter-spacing:.055em}
+      .metric-value{font-size:18px;font-weight:900}
+      .metric-sub{font-size:10px;color:#7d899b;line-height:1.4}
+      .notice{font-size:11.5px}
+      .demo-only{display:none!important}
+    </style>
+    """
+    html = html.replace("</head>", f"{visual_polish}</head>")
     return html
 
 
