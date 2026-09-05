@@ -14,6 +14,48 @@ async def hold(seconds: float) -> None:
     await asyncio.sleep(seconds)
 
 
+async def wait_for_d_home(page: Page) -> None:
+    """Verify the selected D reference is what the browser actually paints."""
+    await page.wait_for_function(
+        """
+        () => {
+          if (document.body.dataset.view !== 'overview') return false;
+          const heroTitle = document.querySelector('.hero h1');
+          const heroCopy = document.querySelector('.hero p');
+          const heroVisual = document.querySelector('.hero-flow');
+          const rail = document.querySelector('.rail');
+          const topbar = document.querySelector('.topbar');
+          if (!heroTitle || !heroCopy || !heroVisual || !rail || !topbar) return false;
+
+          const title = getComputedStyle(heroTitle, '::after').content || '';
+          const copy = getComputedStyle(heroCopy, '::after').content || '';
+          const background = getComputedStyle(heroVisual).backgroundImage || '';
+          const cardTitles = [...document.querySelectorAll('.feature-card h3')].map(
+            (node) => getComputedStyle(node, '::after').content || ''
+          );
+          const navLabels = [...document.querySelectorAll('.nav button')].map(
+            (node) => getComputedStyle(node, '::after').content || ''
+          );
+
+          return title.includes('오늘도')
+            && title.includes('누군가의 마음이 조금 더 가벼워집니다.')
+            && copy.includes('의료진의 소중한 시간을 지켜주고')
+            && copy.includes('더 깊은 대화에 집중할 수 있도록')
+            && getComputedStyle(rail).display === 'flex'
+            && getComputedStyle(topbar).display === 'none'
+            && background.includes('data:image/webp;base64')
+            && ['정확한 전사', '근거 기반 요약', '사람의 검토', '더 나은 변화'].every(
+              (label) => cardTitles.some((value) => value.includes(label))
+            )
+            && ['홈', '상담 기록', '검토 대기', '분석'].every(
+              (label) => navLabels.some((value) => value.includes(label))
+            );
+        }
+        """,
+        timeout=20_000,
+    )
+
+
 async def wait_for_draft(page: Page) -> None:
     await page.wait_for_function(
         """
@@ -60,16 +102,10 @@ async def capture() -> None:
         )
         page = await context.new_page()
         await page.goto(BASE_URL, wait_until="networkidle", timeout=60_000)
-        await page.locator("#system-status").wait_for(state="visible")
+        await page.locator("#system-status").wait_for(state="attached")
 
-        # 1) Product overview: verify the selected D-style product story is actually live.
-        await page.locator("#view-overview h1").filter(
-            has_text="상담의 중요한 순간을,"
-        ).wait_for(state="visible")
-        await page.wait_for_function(
-            "document.body.dataset.view === 'overview'",
-            timeout=10_000,
-        )
+        # 1) Product overview: verify the exact selected D visual contract is live.
+        await wait_for_d_home(page)
         await hold(7)
 
         # 2) Run the normal synthetic path through READY + purge and verify evidence-link status.
@@ -107,11 +143,9 @@ async def capture() -> None:
         await wait_for_operations(page)
         await hold(10)
 
-        # Close on the warm overview so the final frame returns to the product identity.
+        # Close on the selected D overview and re-check the visual contract.
         await switch_view(page, "overview")
-        await page.locator("#view-overview h1").filter(
-            has_text="놓치지 않는 기록으로."
-        ).wait_for(state="visible")
+        await wait_for_d_home(page)
         await hold(5)
 
         if page.video is None:
