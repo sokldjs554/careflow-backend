@@ -27,7 +27,7 @@ async def wait_for_draft(page: Page) -> None:
 
 
 async def wait_for_operations(page: Page) -> None:
-    """Wait for the visible Operations view and its runtime data, not a CSS-only grid."""
+    """Wait for the visible System view and its runtime data, not a CSS-only grid."""
     await page.locator("#view-operations").wait_for(state="visible")
     await page.wait_for_function(
         """
@@ -62,12 +62,23 @@ async def capture() -> None:
         await page.goto(BASE_URL, wait_until="networkidle", timeout=60_000)
         await page.locator("#system-status").wait_for(state="visible")
 
-        # 1) Product overview: give the viewer time to read the workflow and boundaries.
+        # 1) Product overview: verify the selected D-style product story is actually live.
+        await page.locator("#view-overview h1").filter(
+            has_text="상담의 중요한 순간을,"
+        ).wait_for(state="visible")
+        await page.wait_for_function(
+            "document.body.dataset.view === 'overview'",
+            timeout=10_000,
+        )
         await hold(7)
 
-        # 2) Run the normal synthetic path all the way through READY + purge.
+        # 2) Run the normal synthetic path through READY + purge and verify evidence-link status.
         await page.locator("#guided-demo").click()
         await wait_for_draft(page)
+        await page.wait_for_function(
+            "document.getElementById('home-coverage')?.textContent?.trim() === '3/3'",
+            timeout=20_000,
+        )
         await hold(10)
 
         # 3) Show a safety-signal path that must go to human review.
@@ -85,18 +96,22 @@ async def capture() -> None:
         await switch_view(page, "queue")
         await hold(8)
 
-        # 5) AI Quality exposes adopted/rejected experiments rather than model-name decoration.
+        # 5) Engineering keeps model evaluation available without leading the product story.
         await switch_view(page, "quality")
         await page.locator("#quality-grid").wait_for(state="visible")
+        await page.get_by_text("Model Evaluation", exact=True).wait_for(state="visible")
         await hold(10)
 
-        # 6) Operations shows the truthful public-demo runtime and health state.
+        # 6) System shows the truthful public-demo runtime and health state.
         await switch_view(page, "operations")
         await wait_for_operations(page)
         await hold(10)
 
-        # Close on the overview so the final frame returns to the product story.
+        # Close on the warm overview so the final frame returns to the product identity.
         await switch_view(page, "overview")
+        await page.locator("#view-overview h1").filter(
+            has_text="놓치지 않는 기록으로."
+        ).wait_for(state="visible")
         await hold(5)
 
         if page.video is None:
