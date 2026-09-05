@@ -39,6 +39,7 @@ REQUEST_LATENCY = Histogram(
 )
 
 _DEMO_HTML_PATH = Path(__file__).parent / "static" / "index.html"
+_DEMO_THEME_PATH = Path(__file__).parent / "static" / "theme.css"
 
 
 def _provider_neutral_demo_html() -> str:
@@ -50,16 +51,32 @@ def _provider_neutral_demo_html() -> str:
     )
     html = html.replace(
         "기록을 만드는 데서 끝내지 않고<br>검토 가능한 서비스 상태로 바꿉니다.",
-        "상담 기록,<br>근거와 검토까지 한 흐름으로.",
+        "상담의 중요한 순간을,<br>놓치지 않는 기록으로.",
     )
-    html = html.replace(
-        "발화 수집 → 근거 연결 S/O/P 초안 → 사람 검토 → 원문 삭제를 하나의 상태 머신으로 연결했습니다. 정상 경로와 실패·검토 경로를 같은 화면에서 직접 재현할 수 있습니다.",
-        "실시간 발화를 근거가 연결된 S/O/P 초안으로 정리하고, 사람 검토와 원문 삭제까지 하나의 흐름으로 이어집니다. 정상·근거 누락·안전 신호·중복 입력을 직접 재현할 수 있습니다.",
+    old_intro = (
+        "발화 수집 → 근거 연결 S/O/P 초안 → 사람 검토 → 원문 삭제를 하나의 "
+        "상태 머신으로 연결했습니다. 정상 경로와 실패·검토 경로를 같은 화면에서 "
+        "직접 재현할 수 있습니다."
     )
+    new_intro = (
+        "실시간 상담 내용을 구조화하고 원문 근거를 연결해, 의료진이 검토할 수 있는 "
+        "기록 초안을 만듭니다. 근거가 부족하거나 안전 신호가 있으면 자동 확정하지 "
+        "않고 검토 흐름으로 전환합니다."
+    )
+    html = html.replace(old_intro, new_intro)
+    html = html.replace("Realtime evidence-linked workflow", "CONSULTATION RECORD WORKFLOW")
+    html = html.replace("▶ 전체 흐름 자동 시연", "데모 체험하기")
+    html = html.replace("직접 조작하기", "상담 흐름 보기")
     html = html.replace("Evidence coverage", "근거 연결 상태")
     html = html.replace(
         "마지막 초안의 근거 연결",
         "S/O/P 필수 섹션 · 정확도 지표 아님",
+    )
+    html = html.replace(
+        '<div class="stat-label">AI gate</div><div class="stat-value">SFT ✓</div>'
+        '<div class="stat-sub">DPO는 회귀로 미채택</div>',
+        '<div class="stat-label">Review policy</div><div class="stat-value">HUMAN</div>'
+        '<div class="stat-sub">위험·누락은 자동 확정하지 않음</div>',
     )
 
     old_lifecycle = (
@@ -142,6 +159,38 @@ def _provider_neutral_demo_html() -> str:
         '</div></div>'
     )
     html = html.replace(quality_heading, selection_path)
+
+    html = html.replace(
+        '<button class="active" data-view="overview"><span class="nav-icon">◫</span>'
+        'Overview</button>',
+        '<button class="active" data-view="overview"><span class="nav-icon">◫</span>'
+        'Home</button>',
+    )
+    html = html.replace(
+        '<button data-view="quality"><span class="nav-icon">↗</span>AI Quality</button>',
+        '<button data-view="quality"><span class="nav-icon">↗</span>Engineering</button>',
+    )
+    html = html.replace(
+        '<button data-view="operations"><span class="nav-icon">◇</span>Operations</button>',
+        '<button data-view="operations"><span class="nav-icon">◇</span>System</button>',
+    )
+    html = html.replace("AI Quality Gate", "Model Evaluation")
+    html = html.replace(
+        'quality:["AI Quality","실험 결과를 채택·미채택 결정과 함께 확인합니다."]',
+        'quality:["Engineering","모델 평가와 채택·미채택 근거를 제품 흐름과 분리해 확인합니다."]',
+    )
+    html = html.replace(
+        'operations:["Operations","실행 중인 데이터 계층과 health를 확인합니다."]',
+        'operations:["System","실행 중인 데이터 계층과 health를 확인합니다."]',
+    )
+    html = html.replace(
+        'function switchView(name){state.view=name;',
+        'function switchView(name){state.view=name;document.body.dataset.view=name;',
+    )
+    html = html.replace("<body>", '<body data-view="overview">', 1)
+
+    theme_css = _DEMO_THEME_PATH.read_text(encoding="utf-8")
+    html = html.replace("</style>", f"\n{theme_css}\n  </style>", 1)
     return html
 
 
