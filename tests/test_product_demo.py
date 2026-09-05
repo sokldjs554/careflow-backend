@@ -6,14 +6,14 @@ def test_product_demo_exposes_visible_workflow_controls(client: TestClient) -> N
 
     assert response.status_code == 200
     html = response.text.lower()
-    assert "전체 흐름 자동 시연" in response.text
+    assert "데모 체험하기" in response.text
     assert "data-scenario=\"normal\"" in response.text
     assert "data-scenario=\"safety_signal\"" in response.text
     assert "data-scenario=\"duplicate\"" in response.text
     assert "data lifecycle" in html
-    assert "evidence coverage" in html
+    assert "근거 연결 상태" in response.text
     assert "review queue" in html
-    assert "ai quality" in html
+    assert "engineering" in html
     assert "assessment — blocked" in html
     assert "합성·비식별 데이터" in response.text
     assert "claude" not in html
@@ -40,13 +40,16 @@ def test_product_demo_shows_evidence_flow_and_section_coverage(client: TestClien
     assert "03 · S / O / P" in html
     assert "04 · Review / Purge" in html
     assert 'required=["subjective","objective","plan"]' in html
-    assert "required.filter(section=>covered.has(section)).length/required.length*100" in html
+    assert "required.filter(section=>covered.has(section)).length}" in html
+    assert "정확도 지표 아님" in html
+    assert "`${state.lastCoverage}/3`" in html
 
 
 def test_product_demo_shows_post_training_selection_path(client: TestClient) -> None:
     response = client.get("/")
 
     assert response.status_code == 200
+    assert "Model Evaluation" in response.text
     assert "Post-training selection path" in response.text
     assert "BASE" in response.text
     assert "SFT · ADOPTED" in response.text
