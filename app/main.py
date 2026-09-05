@@ -48,6 +48,19 @@ def _provider_neutral_demo_html() -> str:
         "실제 환자·임상 데이터가 아닌 합성 데이터만 사용합니다.",
         "실제 환자·임상 데이터가 아닌 합성·비식별 데이터만 사용합니다.",
     )
+    html = html.replace(
+        "기록을 만드는 데서 끝내지 않고<br>검토 가능한 서비스 상태로 바꿉니다.",
+        "상담 기록,<br>근거와 검토까지 한 흐름으로.",
+    )
+    html = html.replace(
+        "발화 수집 → 근거 연결 S/O/P 초안 → 사람 검토 → 원문 삭제를 하나의 상태 머신으로 연결했습니다. 정상 경로와 실패·검토 경로를 같은 화면에서 직접 재현할 수 있습니다.",
+        "실시간 발화를 근거가 연결된 S/O/P 초안으로 정리하고, 사람 검토와 원문 삭제까지 하나의 흐름으로 이어집니다. 정상·근거 누락·안전 신호·중복 입력을 직접 재현할 수 있습니다.",
+    )
+    html = html.replace("Evidence coverage", "근거 연결 상태")
+    html = html.replace(
+        "마지막 초안의 근거 연결",
+        "S/O/P 필수 섹션 · 정확도 지표 아님",
+    )
 
     old_lifecycle = (
         'function updateLifecycle(status,purged,review){const order=status==="idle"?0:'
@@ -77,9 +90,21 @@ def _provider_neutral_demo_html() -> str:
         'function computeCoverage(draft,sourceTranscript){if(!draft||!sourceTranscript.length)'
         'return null;const required=["subjective","objective","plan"];const covered=new Set('
         '(draft.evidence||[]).filter(e=>e.source_sequences?.length).map(e=>e.section));return '
-        'Math.round(required.filter(section=>covered.has(section)).length/required.length*100)}'
+        'required.filter(section=>covered.has(section)).length}'
     )
     html = html.replace(old_coverage, new_coverage)
+    html = html.replace(
+        '$("signal-coverage").textContent=state.lastCoverage==null?"-":`${state.lastCoverage}%`;',
+        '$("signal-coverage").textContent=state.lastCoverage==null?"-":`${state.lastCoverage}/3`;',
+    )
+    html = html.replace(
+        'state.lastCoverage===100?"good"',
+        'state.lastCoverage===3?"good"',
+    )
+    html = html.replace(
+        '$("home-coverage").textContent=state.lastCoverage==null?"-":`${state.lastCoverage}%`;',
+        '$("home-coverage").textContent=state.lastCoverage==null?"-":`${state.lastCoverage}/3`;',
+    )
 
     console_marker = '<div class="console-grid">'
     evidence_flow = (
