@@ -33,6 +33,40 @@ jobs:
           DATABASE_URL: sqlite+aiosqlite:///./ci-migration.db
         run: uv run alembic upgrade head
 
+  readme_repro:
+    name: README install and boot
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: false
+      - name: Reproduce documented install
+        run: |
+          uv python install 3.12
+          uv sync --locked --extra dev --extra speech
+          cp .env.example .env
+      - name: Boot documented application path
+        env:
+          NOTE_GENERATOR_MODE: deterministic
+          DATABASE_URL: sqlite+aiosqlite:///./readme-repro.db
+          REDIS_URL: ""
+        run: |
+          uv run alembic upgrade head
+          uv run uvicorn app.main:app --host 127.0.0.1 --port 8765 > /tmp/careflow-readme-repro.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:8765/health/ready > /tmp/readiness.json; then
+              cat /tmp/readiness.json
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/careflow-readme-repro.log
+          exit 1
+
   ai_lab:
     name: AI lab smoke
     runs-on: ubuntu-latest
