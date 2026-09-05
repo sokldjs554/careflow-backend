@@ -134,4 +134,7 @@ def test_demo_separates_product_and_engineering_navigation(client: TestClient) -
     assert ">Engineering</button>" in response.text
     assert ">AI Quality</button>" not in response.text
     assert "Model Evaluation" in response.text
-    assert "D+B hybrid visual system" in response.text
+    assert "D-faithful landing" in response.text
+    assert "누군가의 마음이 조금 더 가벼워집니다." in response.text
+    assert "Listen / Understand / Care / Together" not in response.text
+    assert "data:image/webp;base64" in response.text
