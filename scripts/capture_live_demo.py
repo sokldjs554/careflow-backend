@@ -32,9 +32,9 @@ async def switch_view(page: Page, view: str) -> None:
 
 
 async def capture() -> None:
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    await asyncio.to_thread(OUTPUT_DIR.mkdir, parents=True, exist_ok=True)
     raw_dir = OUTPUT_DIR / "raw"
-    raw_dir.mkdir(parents=True, exist_ok=True)
+    await asyncio.to_thread(raw_dir.mkdir, parents=True, exist_ok=True)
 
     async with async_playwright() as playwright:
         browser = await playwright.chromium.launch(headless=True)
@@ -92,7 +92,11 @@ async def capture() -> None:
         await context.close()
         await browser.close()
 
-    shutil.copy2(raw_path, OUTPUT_DIR / "careflow-live-demo.webm")
+    await asyncio.to_thread(
+        shutil.copy2,
+        raw_path,
+        OUTPUT_DIR / "careflow-live-demo.webm",
+    )
 
 
 if __name__ == "__main__":
