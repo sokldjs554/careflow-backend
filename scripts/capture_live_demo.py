@@ -26,6 +26,21 @@ async def wait_for_draft(page: Page) -> None:
     )
 
 
+async def wait_for_operations(page: Page) -> None:
+    """Wait for the visible Operations view and its runtime data, not a CSS-only grid."""
+    await page.locator("#view-operations").wait_for(state="visible")
+    await page.wait_for_function(
+        """
+        () => {
+          const db = document.getElementById('op-db')?.textContent?.trim();
+          const store = document.getElementById('op-store')?.textContent?.trim();
+          return Boolean(db && db !== '-' && store && store !== '-');
+        }
+        """,
+        timeout=20_000,
+    )
+
+
 async def switch_view(page: Page, view: str) -> None:
     await page.locator(f"[data-view='{view}']").click()
     await hold(1.5)
@@ -77,7 +92,7 @@ async def capture() -> None:
 
         # 6) Operations shows the truthful public-demo runtime and health state.
         await switch_view(page, "operations")
-        await page.locator("#operations-grid").wait_for(state="visible")
+        await wait_for_operations(page)
         await hold(10)
 
         # Close on the overview so the final frame returns to the product story.
