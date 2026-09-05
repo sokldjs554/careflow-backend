@@ -217,9 +217,8 @@ Python 3.11+가 필요합니다.
 ```bash
 uv sync --locked --extra dev
 cp .env.example .env
-# NOTE_GENERATOR_MODE=deterministic
-uv run alembic upgrade head
-uv run uvicorn app.main:app --reload
+NOTE_GENERATOR_MODE=deterministic uv run alembic upgrade head
+NOTE_GENERATOR_MODE=deterministic uv run uvicorn app.main:app --reload
 ```
 
 브라우저에서 `http://127.0.0.1:8000`을 엽니다.
@@ -264,20 +263,10 @@ make ai-verify
 ### 의도적으로 과장하지 않는 것
 
 - 실제 환자 데이터·의료진 평가·임상 정확도 검증 없음
-- 한국어 STT 수치는 깨끗한 합성 TTS 3건의 정규화 CER `1/70 = 1.43%` 범위뿐
+- 한국어 STT 수치는 깨끗한 합성 TTS 3건의 정규화 CER `1/70 = 1.43%`에 한정
 - 실제 마이크·억양·배경 소음 환경 검증은 별도 과제
-- AWS는 ECS/ALB/RDS/ElastiCache Terraform 시작점이며 **실제 AWS 계정에 배포·운영하지 않음**
-- 공개 Render demo는 SQLite + memory + deterministic generator이며 PostgreSQL/Redis/외부 LLM 운영을 가장하지 않음
-- 인증·다중 테넌시·KMS·DR·WebSocket drain/autoscaling은 production 전 추가 설계 영역
+- AWS는 ECS/RDS/ElastiCache Terraform 시작점이며 실제 AWS 계정 배포 아님
+- public demo의 SQLite/in-memory 경로를 production storage라고 주장하지 않음
+- 인증·다중 테넌시·KMS·DR·WebSocket drain/autoscaling은 production 전 추가 설계 필요
 
-좋아진 결과만 남기지 않습니다. **실험이 회귀하면 미채택 결과와 이유도 코드·결과 JSON·UI에 함께 남깁니다.**
-
-## 10. 추가 문서
-
-- [`docs/job-fit-2026-09-04.md`](docs/job-fit-2026-09-04.md) — Backend Developer 공고 대비 코드 증거/남은 외부 경험 gap
-- [`docs/github-release-checklist.md`](docs/github-release-checklist.md) — 공개 전 최종 게이트
-- [`docs/third-party-license-notes.md`](docs/third-party-license-notes.md) — 직접 의존성/명시적 모델 license inventory
-- [`docs/runtime-packaging-check.md`](docs/runtime-packaging-check.md) — 실제 배포에서 발견한 packaging 회귀
-- [`docs/live-e2e-2026-09-04.md`](docs/live-e2e-2026-09-04.md) — 별도 structured-output E2E 기록
-
-> **Project license:** 현재 이 저장소 자체에는 별도 오픈소스 LICENSE를 선택하지 않았습니다. 외부 의존성의 라이선스와 프로젝트 자체 라이선스는 별개입니다.
+좋아진 결과만 남기지 않습니다. **실험·배포에서 실패하거나 회귀한 결과도 원인과 수정·미채택 근거를 저장소에 남기는 것**을 프로젝트 원칙으로 둡니다.
