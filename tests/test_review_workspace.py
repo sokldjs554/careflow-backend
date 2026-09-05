@@ -119,8 +119,19 @@ def test_demo_uses_product_copy_and_non_accuracy_evidence_status(
     response = client.get("/")
 
     assert response.status_code == 200
-    assert "상담 기록,<br>근거와 검토까지 한 흐름으로." in response.text
+    assert "상담의 중요한 순간을,<br>놓치지 않는 기록으로." in response.text
     assert "근거 연결 상태" in response.text
     assert "S/O/P 필수 섹션 · 정확도 지표 아님" in response.text
     assert "`${state.lastCoverage}/3`" in response.text
     assert "`${state.lastCoverage}%`" not in response.text
+
+
+def test_demo_separates_product_and_engineering_navigation(client: TestClient) -> None:
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert '<body data-view="overview">' in response.text
+    assert ">Engineering</button>" in response.text
+    assert ">AI Quality</button>" not in response.text
+    assert "Model Evaluation" in response.text
+    assert "D+B hybrid visual system" in response.text
