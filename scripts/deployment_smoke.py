@@ -45,21 +45,25 @@ def wait_for_ready() -> None:
     raise RuntimeError(f"deployment never became ready: {last_error}")
 
 
-def verify_product_shell() -> None:
+def fetch_product_shell() -> str:
     with urllib.request.urlopen(f"{BASE_URL}/", timeout=30) as response:  # noqa: S310
-        html = response.read().decode("utf-8")
-    Path("live-demo.html").write_text(html, encoding="utf-8")
+        return response.read().decode("utf-8")
 
+
+def product_shell_diagnostics(html: str) -> tuple[list[str], list[str]]:
     required = [
-        "Overview",
+        "상담의 중요한 순간을,",
+        "놓치지 않는 기록으로.",
         "Live Session",
         "Review Queue",
-        "AI Quality",
-        "Operations",
-        "Evidence coverage",
+        "Engineering",
+        "System",
+        "근거 연결 상태",
+        "정확도 지표 아님",
         "Data lifecycle",
+        "Model Evaluation",
         "Post-training selection path",
-        "전체 흐름 자동 시연",
+        "데모 체험하기",
         "발화 수집",
         "Evidence map",
         "Review / Purge",
@@ -67,19 +71,41 @@ def verify_product_shell() -> None:
     missing = [token for token in required if token not in html]
     lowered = html.lower()
     exposed = [token for token in ("claude", "anthropic") if token in lowered]
-    diagnostics = {
-        "missing": missing,
-        "provider_names_exposed": exposed,
-        "html_length": len(html),
-    }
-    Path("deployment-smoke-diagnostics.json").write_text(
-        json.dumps(diagnostics, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
-    if missing:
-        raise AssertionError(f"missing rendered product landmarks: {missing}")
-    if exposed:
-        raise AssertionError(f"provider-specific names leaked into rendered demo: {exposed}")
-    print("product shell and provider-neutral UI verified")
+    return missing, exposed
+
+
+def verify_product_shell_after_deploy_converges() -> None:
+    last_error: Exception | None = None
+    for attempt in range(1, ATTEMPTS + 1):
+        try:
+            html = fetch_product_shell()
+            Path("live-demo.html").write_text(html, encoding="utf-8")
+            missing, exposed = product_shell_diagnostics(html)
+            diagnostics = {
+                "missing": missing,
+                "provider_names_exposed": exposed,
+                "html_length": len(html),
+                "attempt": attempt,
+            }
+            Path("deployment-smoke-diagnostics.json").write_text(
+                json.dumps(diagnostics, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
+            if exposed:
+                raise AssertionError(
+                    f"provider-specific names leaked into rendered demo: {exposed}"
+                )
+            if not missing:
+                print(f"product shell verified on attempt {attempt}")
+                return
+            last_error = AssertionError(f"missing rendered product landmarks: {missing}")
+        except Exception as exc:  # main push and Render auto-deploy can race
+            last_error = exc
+        if attempt < ATTEMPTS:
+            print(
+                f"product shell not converged yet ({attempt}/{ATTEMPTS}): {last_error}"
+            )
+            time.sleep(RETRY_SECONDS)
+    raise RuntimeError(f"product shell never converged to expected main UI: {last_error}")
 
 
 def verify_operations_and_quality() -> None:
@@ -119,7 +145,7 @@ def verify_operations_and_quality() -> None:
         raise AssertionError("unexpected SFT candidate F1")
     if dpo.get("dpo_reference_token_f1") != 0.1093:
         raise AssertionError("unexpected DPO candidate F1")
-    print("operations and AI quality contracts verified")
+    print("operations and model-evaluation contracts verified")
 
 
 def exercise_synthetic_session_once() -> str:
@@ -195,7 +221,7 @@ def verify_live_e2e_after_deploy_converges() -> None:
 
 def main() -> None:
     wait_for_ready()
-    verify_product_shell()
+    verify_product_shell_after_deploy_converges()
     verify_operations_and_quality()
     verify_live_e2e_after_deploy_converges()
 
