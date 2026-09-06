@@ -137,3 +137,5 @@ jobs:
           git add README.md
           git commit -m "Add verified CareFlow demo video"
           git push origin main
+
+# Verified captures are published to demo-assets so main stays source-focused.
