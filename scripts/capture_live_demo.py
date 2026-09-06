@@ -25,7 +25,8 @@ async def wait_for_d_home(page: Page) -> None:
           const heroVisual = document.querySelector('.hero-flow');
           const rail = document.querySelector('.rail');
           const topbar = document.querySelector('.topbar');
-          if (!heroTitle || !heroCopy || !heroVisual || !rail || !topbar) return false;
+          const intro = document.querySelector('[data-intro="features"]');
+          if (!heroTitle || !heroCopy || !heroVisual || !rail || !topbar || !intro) return false;
 
           const titleStyle = getComputedStyle(heroTitle, '::after');
           const title = titleStyle.content || '';
@@ -49,7 +50,7 @@ async def wait_for_d_home(page: Page) -> None:
             && getComputedStyle(topbar).display === 'none'
             && background.includes('data:image/webp;base64')
             && visualStyle.opacity !== '0'
-            && ['정확한 전사', '근거 기반 요약', '사람의 검토', '더 나은 변화'].every(
+            && ['상담 내용 기록', '근거 연결 요약', '검토 필요 신호', '원문 수명주기'].every(
               (label) => cardTitles.some((value) => value.includes(label))
             )
             && ['홈', '상담 기록', '검토 대기', '분석'].every(
@@ -81,6 +82,27 @@ async def wait_for_d_home(page: Page) -> None:
         raise RuntimeError("D hero room visual did not decode in the browser")
 
 
+async def wait_for_light_workspace(page: Page) -> None:
+    await page.wait_for_function(
+        """
+        () => {
+          if (document.body.dataset.view !== 'console') return false;
+          const main = document.querySelector('.main');
+          const rail = document.querySelector('.rail');
+          const transcript = document.querySelector('.transcript');
+          if (!main || !rail || !transcript) return false;
+          const mainBg = getComputedStyle(main).backgroundColor;
+          const railBg = getComputedStyle(rail).backgroundColor;
+          const transcriptBg = getComputedStyle(transcript).backgroundColor;
+          return mainBg !== 'rgb(15, 23, 34)'
+            && railBg !== 'rgb(10, 18, 28)'
+            && transcriptBg !== 'rgb(17, 26, 37)';
+        }
+        """,
+        timeout=20_000,
+    )
+
+
 async def wait_for_draft(page: Page) -> None:
     await page.wait_for_function(
         """
@@ -94,7 +116,6 @@ async def wait_for_draft(page: Page) -> None:
 
 
 async def wait_for_operations(page: Page) -> None:
-    """Wait for the visible System view and its runtime data, not a CSS-only grid."""
     await page.locator("#view-operations").wait_for(state="visible")
     await page.wait_for_function(
         """
@@ -110,7 +131,7 @@ async def wait_for_operations(page: Page) -> None:
 
 async def switch_view(page: Page, view: str) -> None:
     await page.locator(f"[data-view='{view}']").click()
-    await hold(1.5)
+    await hold(1.0)
 
 
 async def capture() -> None:
@@ -129,50 +150,67 @@ async def capture() -> None:
         await page.goto(BASE_URL, wait_until="networkidle", timeout=60_000)
         await page.locator("#system-status").wait_for(state="attached")
 
-        # 1) Product overview: verify and capture the selected D visual contract.
+        # 1) Product overview and service-intro behavior.
         await wait_for_d_home(page)
         await page.screenshot(path=str(OUTPUT_DIR / "careflow-d-home.png"), full_page=False)
-        await hold(7)
+        await page.locator('[data-intro="features"]').click()
+        await page.locator("#service-intro-section").wait_for(state="visible")
+        await hold(3)
 
-        # 2) Run the normal synthetic path through READY + purge and verify evidence-link status.
+        # 2) Entering consultation must not create or prefill a session.
         await page.locator("#guided-demo").click()
+        await wait_for_light_workspace(page)
+        await page.wait_for_function(
+            "document.getElementById('transcript-count')?.textContent?.includes('0 utterances')",
+            timeout=20_000,
+        )
+        await page.locator("#workspace-new-session").wait_for(state="visible")
+        await hold(4)
+
+        # 3) Explicit demo action creates the session; finalize separately.
+        await page.locator("[data-scenario='normal']").click()
+        await page.wait_for_function(
+            "document.getElementById('transcript-count')?.textContent?.includes('4 utterances')",
+            timeout=20_000,
+        )
+        await page.locator("#finalize").click()
         await wait_for_draft(page)
         await page.wait_for_function(
             "document.getElementById('home-coverage')?.textContent?.trim() === '3/3'",
             timeout=20_000,
         )
-        await hold(10)
+        await hold(7)
 
-        # 3) Show a safety-signal path that must go to human review.
+        # 4) Safety signal must go to human review.
         await page.locator("[data-scenario='safety_signal']").click()
         await page.wait_for_function(
-            "document.getElementById('transcript-count').textContent.includes('3 utterances')",
+            "document.getElementById('transcript-count')?.textContent?.includes('3 utterances')",
             timeout=20_000,
         )
-        await hold(3)
         await page.locator("#finalize").click()
         await wait_for_draft(page)
-        await hold(9)
+        await hold(7)
 
-        # 4) Review Queue makes the human-in-the-loop decision visible.
+        # 5) Review queue.
         await switch_view(page, "queue")
-        await hold(8)
+        await hold(5)
 
-        # 5) Engineering keeps model evaluation available without leading the product story.
+        # 6) Validation view: decisions and evidence, not a technology laundry list.
         await switch_view(page, "quality")
         await page.locator("#quality-grid").wait_for(state="visible")
-        await page.get_by_text("Model Evaluation", exact=True).wait_for(state="visible")
-        await hold(10)
+        await page.get_by_text("검증 결과", exact=True).first.wait_for(state="visible")
+        await page.get_by_text("검색 품질 비교", exact=True).wait_for(state="visible")
+        await hold(6)
 
-        # 6) System shows the truthful public-demo runtime and health state.
+        # 7) System state.
         await switch_view(page, "operations")
         await wait_for_operations(page)
-        await hold(10)
+        await hold(6)
 
-        # Close on the selected D overview and re-check the visual contract.
+        # Close on the D overview.
         await switch_view(page, "overview")
         await wait_for_d_home(page)
-        await hold(5)
+        await hold(4)
 
         if page.video is None:
             raise RuntimeError("Playwright did not create a video recording")
