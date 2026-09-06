@@ -1,8 +1,12 @@
-"""Live public-demo contract for the Render deployment.
+"""Live contract for the public Render demo.
 
-This intentionally uses only the Python standard library so the deployment gate can run
-without installing the application. All payloads are synthetic and non-identifying.
+The public demo intentionally runs a low-cost SQLite + in-memory transcript store while
+CI separately proves PostgreSQL 16 + Redis 7 integration. This smoke test verifies the
+actual public runtime, product shell, model-evaluation evidence, and both normal and
+human-review lifecycle paths using only synthetic data.
 """
+
+from __future__ import annotations
 
 import json
 import os
@@ -12,6 +16,12 @@ from pathlib import Path
 from typing import Any
 
 BASE_URL = os.environ.get("BASE_URL", "https://careflow-demo.onrender.com").rstrip("/")
+EXPECTED_GIT_COMMIT = os.environ.get("EXPECTED_GIT_COMMIT", "").strip()
+EXPECTED_DATABASE_BACKEND = os.environ.get("EXPECTED_DATABASE_BACKEND", "sqlite").strip()
+EXPECTED_TRANSCRIPT_STORE_BACKEND = os.environ.get(
+    "EXPECTED_TRANSCRIPT_STORE_BACKEND", "memory"
+).strip()
+EXPECTED_ENVIRONMENT = os.environ.get("EXPECTED_ENVIRONMENT", "render-demo").strip()
 ATTEMPTS = 30
 RETRY_SECONDS = 10
 
@@ -32,12 +42,19 @@ def wait_for_ready() -> None:
     last_error: Exception | None = None
     for attempt in range(1, ATTEMPTS + 1):
         try:
-            payload = request_json("GET", "/health/ready")
-            if payload == {"status": "ready"}:
-                print(f"readiness verified on attempt {attempt}")
-                return
-            last_error = RuntimeError(f"unexpected readiness payload: {payload}")
-        except Exception as exc:  # external deployment may be warming up
+            ready = request_json("GET", "/health/ready")
+            if ready != {"status": "ready"}:
+                raise RuntimeError(f"unexpected readiness payload: {ready}")
+            if EXPECTED_GIT_COMMIT:
+                release = request_json("GET", "/v1/release")
+                if release.get("git_commit") != EXPECTED_GIT_COMMIT:
+                    raise RuntimeError(
+                        "release mismatch: "
+                        f"{release.get('git_commit')!r} != {EXPECTED_GIT_COMMIT!r}"
+                    )
+            print(f"readiness and release verified on attempt {attempt}")
+            return
+        except Exception as exc:  # public instance may still be warming up
             last_error = exc
         if attempt < ATTEMPTS:
             print(f"not ready yet ({attempt}/{ATTEMPTS}): {last_error}")
@@ -56,7 +73,6 @@ def product_shell_diagnostics(html: str) -> tuple[list[str], list[str]]:
         "놓치지 않는 기록으로.",
         "상담 시작하기",
         "서비스 소개 보기",
-        'data-intro="features"',
         "service-intro-section",
         "상담 기록",
         "검토 대기",
@@ -79,60 +95,45 @@ def product_shell_diagnostics(html: str) -> tuple[list[str], list[str]]:
     missing = [token for token in required if token not in html]
     lowered = html.lower()
     exposed = [token for token in ("claude", "anthropic") if token in lowered]
-    forbidden_copy = [
-        "정확한 전사",
-        "사람의 검토",
+    legacy_copy = [
         "데모 체험하기",
         "Engineering</button>",
         "Live Session</button>",
         "AI Quality</button>",
     ]
-    exposed.extend(token for token in forbidden_copy if token in html)
+    exposed.extend(token for token in legacy_copy if token in html)
     return missing, exposed
 
 
-def verify_product_shell_after_deploy_converges() -> None:
-    last_error: Exception | None = None
-    for attempt in range(1, ATTEMPTS + 1):
-        try:
-            html = fetch_product_shell()
-            Path("live-demo.html").write_text(html, encoding="utf-8")
-            missing, exposed = product_shell_diagnostics(html)
-            diagnostics = {
-                "missing": missing,
-                "forbidden_or_provider_copy": exposed,
-                "html_length": len(html),
-                "attempt": attempt,
-            }
-            Path("deployment-smoke-diagnostics.json").write_text(
-                json.dumps(diagnostics, ensure_ascii=False, indent=2), encoding="utf-8"
-            )
-            if exposed:
-                raise AssertionError(
-                    f"forbidden/provider-specific copy leaked into rendered demo: {exposed}"
-                )
-            if not missing:
-                print(f"product shell verified on attempt {attempt}")
-                return
-            last_error = AssertionError(f"missing rendered product landmarks: {missing}")
-        except Exception as exc:  # main push and Render auto-deploy can race
-            last_error = exc
-        if attempt < ATTEMPTS:
-            print(
-                f"product shell not converged yet ({attempt}/{ATTEMPTS}): {last_error}"
-            )
-            time.sleep(RETRY_SECONDS)
-    raise RuntimeError(f"product shell never converged to expected main UI: {last_error}")
+def verify_product_shell() -> None:
+    html = fetch_product_shell()
+    Path("live-demo.html").write_text(html, encoding="utf-8")
+    missing, exposed = product_shell_diagnostics(html)
+    diagnostics = {
+        "missing": missing,
+        "forbidden_or_provider_copy": exposed,
+        "html_length": len(html),
+    }
+    Path("deployment-smoke-diagnostics.json").write_text(
+        json.dumps(diagnostics, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    if exposed:
+        raise AssertionError(f"forbidden/provider-specific copy leaked into demo: {exposed}")
+    if missing:
+        raise AssertionError(f"missing product landmarks: {missing}")
+    print("product shell verified")
 
 
 def verify_operations_and_quality() -> None:
     operations = request_json("GET", "/v1/operations")
     expected_operations = {
+        "environment": EXPECTED_ENVIRONMENT,
         "database_ready": True,
-        "database_backend": "postgresql",
+        "database_backend": EXPECTED_DATABASE_BACKEND,
         "transcript_store_ready": True,
-        "transcript_store_backend": "redis",
+        "transcript_store_backend": EXPECTED_TRANSCRIPT_STORE_BACKEND,
         "note_generator_mode": "deterministic",
+        "speech_enabled": False,
     }
     for key, expected in expected_operations.items():
         actual = operations.get(key)
@@ -162,46 +163,57 @@ def verify_operations_and_quality() -> None:
         raise AssertionError("unexpected SFT candidate F1")
     if dpo.get("dpo_reference_token_f1") != 0.1093:
         raise AssertionError("unexpected DPO candidate F1")
-    print("operations and model-evaluation contracts verified")
+    print(
+        "operations verified: "
+        f"{EXPECTED_DATABASE_BACKEND} + {EXPECTED_TRANSCRIPT_STORE_BACKEND}; "
+        "model-evaluation contracts verified"
+    )
 
 
-def exercise_synthetic_session_once() -> str:
-    session = request_json("POST", "/v1/sessions", {"language": "ko"})
-    session_id = session["session_id"]
-    chunks = [
-        {
-            "sequence": 1,
-            "speaker": "patient",
-            "text": "최근 일주일 동안 잠드는 데 한 시간쯤 걸렸습니다.",
-        },
-        {
-            "sequence": 2,
-            "speaker": "patient",
-            "text": "아침에 피곤해서 업무에 집중하기 어려웠습니다.",
-        },
-        {
-            "sequence": 3,
-            "speaker": "clinician",
-            "text": "대화 중 말투와 호흡은 차분하게 관찰되었습니다.",
-        },
-        {
-            "sequence": 4,
-            "speaker": "clinician",
-            "text": "다음 주에 수면 기록을 함께 확인할 계획입니다.",
-        },
-    ]
+def append_chunks(session_id: str, chunks: list[dict[str, Any]]) -> None:
     for chunk in chunks:
         ack = request_json("POST", f"/v1/sessions/{session_id}/chunks", chunk)
         if ack.get("duplicate") is not False:
             raise AssertionError(f"unexpected duplicate ack: {ack}")
 
+
+def exercise_normal_session() -> str:
+    session = request_json("POST", "/v1/sessions", {"language": "ko"})
+    session_id = session["session_id"]
+    append_chunks(
+        session_id,
+        [
+            {
+                "sequence": 1,
+                "speaker": "patient",
+                "text": "최근 일주일 동안 잠드는 데 한 시간쯤 걸렸습니다.",
+            },
+            {
+                "sequence": 2,
+                "speaker": "patient",
+                "text": "아침에 피곤해서 업무에 집중하기 어려웠습니다.",
+            },
+            {
+                "sequence": 3,
+                "speaker": "clinician",
+                "text": "대화 중 말투와 호흡은 차분하게 관찰되었습니다.",
+            },
+            {
+                "sequence": 4,
+                "speaker": "clinician",
+                "text": "다음 주에 수면 기록을 함께 확인할 계획입니다.",
+            },
+        ],
+    )
     finalized = request_json("POST", f"/v1/sessions/{session_id}/finalize")
-    if finalized.get("status") != "ready":
-        raise AssertionError(f"normal synthetic session did not become READY: {finalized}")
-    if finalized.get("review_required") is not False:
-        raise AssertionError(f"normal synthetic session unexpectedly requires review: {finalized}")
-    if finalized.get("transcript_purged") is not True:
-        raise AssertionError(f"transcript was not purged after READY: {finalized}")
+    expected_final = {
+        "status": "ready",
+        "review_required": False,
+        "transcript_purged": True,
+    }
+    for key, expected in expected_final.items():
+        if finalized.get(key) != expected:
+            raise AssertionError(f"normal session mismatch for {key}: {finalized}")
 
     draft = request_json("GET", f"/v1/sessions/{session_id}/draft")
     evidence = {item["section"]: item["source_sequences"] for item in draft["evidence"]}
@@ -221,26 +233,72 @@ def exercise_synthetic_session_once() -> str:
     return session_id
 
 
-def verify_live_e2e_after_deploy_converges() -> None:
-    last_error: Exception | None = None
-    for attempt in range(1, ATTEMPTS + 1):
-        try:
-            session_id = exercise_synthetic_session_once()
-            print(f"live E2E verified for synthetic session {session_id} on attempt {attempt}")
-            return
-        except Exception as exc:  # main push and Render auto-deploy race by design
-            last_error = exc
-        if attempt < ATTEMPTS:
-            print(f"live E2E not converged yet ({attempt}/{ATTEMPTS}): {last_error}")
-            time.sleep(RETRY_SECONDS)
-    raise RuntimeError(f"live E2E never converged to expected main deployment: {last_error}")
+def exercise_review_session() -> str:
+    session = request_json("POST", "/v1/sessions", {"language": "ko"})
+    session_id = session["session_id"]
+    append_chunks(
+        session_id,
+        [
+            {
+                "sequence": 1,
+                "speaker": "patient",
+                "text": "요즘 죽고 싶다는 생각이 들 때가 있습니다.",
+            },
+            {
+                "sequence": 2,
+                "speaker": "clinician",
+                "text": "대화 중 말투가 느린 것을 관찰했습니다.",
+            },
+            {
+                "sequence": 3,
+                "speaker": "clinician",
+                "text": "즉시 담당자가 검토하고 다음 계획을 정합니다.",
+            },
+        ],
+    )
+    finalized = request_json("POST", f"/v1/sessions/{session_id}/finalize")
+    if finalized.get("status") != "review_required":
+        raise AssertionError(f"safety session was not routed to review: {finalized}")
+    if finalized.get("review_required") is not True:
+        raise AssertionError(f"review flag missing for safety session: {finalized}")
+    if "potential_safety_signal" not in finalized.get("review_reasons", []):
+        raise AssertionError(f"safety reason missing: {finalized}")
+    if finalized.get("transcript_purged") is not False:
+        raise AssertionError("review transcript was purged before human approval")
+
+    retained = request_json("GET", f"/v1/sessions/{session_id}/transcript")
+    if retained.get("transcript_available") is not True or not retained.get("chunks"):
+        raise AssertionError("review transcript was not retained for human review")
+
+    draft = request_json("GET", f"/v1/sessions/{session_id}/draft")
+    approved = request_json(
+        "PATCH",
+        f"/v1/sessions/{session_id}/draft",
+        {
+            "subjective": draft["subjective"],
+            "objective": draft["objective"],
+            "plan": draft["plan"],
+            "action": "approve",
+        },
+    )
+    if approved.get("review_required") is not False:
+        raise AssertionError(f"review remained pending after approval: {approved}")
+    if approved.get("transcript_purged") is not True:
+        raise AssertionError(f"approval did not purge transcript: {approved}")
+
+    purged = request_json("GET", f"/v1/sessions/{session_id}/transcript")
+    if purged.get("transcript_available") is not False or purged.get("chunks") != []:
+        raise AssertionError("approved review transcript is still available")
+    return session_id
 
 
 def main() -> None:
     wait_for_ready()
-    verify_product_shell_after_deploy_converges()
+    verify_product_shell()
     verify_operations_and_quality()
-    verify_live_e2e_after_deploy_converges()
+    normal_id = exercise_normal_session()
+    review_id = exercise_review_session()
+    print(f"live E2E verified: normal={normal_id}, review={review_id}")
 
 
 if __name__ == "__main__":
