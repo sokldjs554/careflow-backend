@@ -97,3 +97,43 @@ jobs:
           git add demo
           git commit -m "Update generated CareFlow demo assets" || true
           git push --force origin demo-assets
+      - name: Link verified demo from README
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git switch -C main origin/main
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("README.md")
+          text = path.read_text(encoding="utf-8")
+          marker = "**Live demo:** https://careflow-demo.onrender.com"
+          video = (
+              "https://raw.githubusercontent.com/sokldjs554/careflow-backend/"
+              "demo-assets/demo/careflow-live-demo.mp4"
+          )
+          preview = (
+              "https://raw.githubusercontent.com/sokldjs554/careflow-backend/"
+              "demo-assets/demo/careflow-d-home.png"
+          )
+          if "demo-assets/demo/careflow-live-demo.mp4" not in text:
+              block = (
+                  marker
+                  + "\n\n## 🎬 검증된 데모 영상\n\n"
+                  + f"[![CareFlow 데모 미리보기]({preview})]({video})\n\n"
+                  + f"**▶ [46초 데모 영상 보기]({video})** · "
+                  + "실제 Chromium E2E가 통과한 합성 데이터 walkthrough입니다."
+              )
+              if marker not in text:
+                  raise SystemExit("README live demo marker not found")
+              path.write_text(text.replace(marker, block, 1), encoding="utf-8")
+          PY
+
+          if git diff --quiet -- README.md; then
+            echo "README already links the verified demo"
+            exit 0
+          fi
+
+          git add README.md
+          git commit -m "Add verified CareFlow demo video"
+          git push origin main
