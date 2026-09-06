@@ -335,9 +335,17 @@ async def capture() -> None:
         # 7) System state must prove live data layers are healthy without exposing credentials.
         await switch_view(page, "operations")
         database_backend, transcript_store_backend = await wait_for_operations(page)
+        require(database_backend == "POSTGRESQL", "Live demo is not using PostgreSQL")
+        require(transcript_store_backend == "REDIS", "Live demo is not using Redis")
         operations_text = await page.locator("#view-operations").inner_text()
-        require("postgresql://" not in operations_text.lower(), "Database credential URL leaked in UI")
-        require("redis://" not in operations_text.lower(), "Redis credential URL leaked in UI")
+        require(
+            "postgresql://" not in operations_text.lower(),
+            "Database credential URL leaked in UI",
+        )
+        require(
+            "redis://" not in operations_text.lower(),
+            "Redis credential URL leaked in UI",
+        )
         verification["database_backend"] = database_backend
         verification["transcript_store_backend"] = transcript_store_backend
         verification["runtime_data_layers_healthy"] = True
