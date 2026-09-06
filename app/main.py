@@ -109,7 +109,10 @@ def _provider_neutral_demo_html() -> str:
     html = html.replace("Sequence gap", "순서 누락")
     html = html.replace("Data lifecycle", "데이터 보존 상태")
     html = html.replace("Human review", "검토 상태")
-    html = html.replace("Transcript", "원문 상태")
+    html = html.replace(
+        '<div class="signal-label">Transcript</div>',
+        '<div class="signal-label">원문 상태</div>',
+    )
     html = html.replace("A · ASSESSMENT — BLOCKED", "A · ASSESSMENT — 생성 차단")
 
     console_heading = (
