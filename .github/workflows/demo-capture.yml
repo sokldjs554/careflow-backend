@@ -9,7 +9,9 @@ on:
       - .github/workflows/demo-capture.yml
       - .github/workflows/deployment-smoke.yml
       - scripts/capture_live_demo.py
+      - scripts/deployment_smoke.py
       - scripts/wait_for_render_release.py
+      - pyproject.toml
       - app/main.py
       - app/api/routes.py
       - app/static/index.html
