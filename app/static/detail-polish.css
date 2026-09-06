@@ -1,0 +1,232 @@
+/* workspace-detail-polish-v2 */
+body:not([data-view="overview"]) {
+  background: #f4f6f3 !important;
+  color: #21343d !important;
+}
+body:not([data-view="overview"]) .app {
+  grid-template-columns: 228px 1fr;
+  background: #f4f6f3 !important;
+}
+body:not([data-view="overview"]) .rail {
+  background: #fbfcf9 !important;
+  color: #29414a !important;
+  border-right: 1px solid #dfe7e2 !important;
+  padding: 20px 14px !important;
+}
+body:not([data-view="overview"]) .brand { color: #183946 !important; }
+body:not([data-view="overview"]) .brand-mark {
+  background: #e4f2ec !important;
+  border-color: #b8d8cc !important;
+  color: #2f946d !important;
+  border-radius: 8px !important;
+}
+body:not([data-view="overview"]) .rail-label { color: #879790 !important; }
+body:not([data-view="overview"]) .nav button {
+  color: #66766f !important;
+  border-radius: 8px !important;
+}
+body:not([data-view="overview"]) .nav button:hover {
+  background: #eef4f0 !important;
+  color: #29483f !important;
+}
+body:not([data-view="overview"]) .nav button.active {
+  background: #e6f1ec !important;
+  color: #245844 !important;
+  box-shadow: inset 3px 0 #4c9b79 !important;
+}
+body:not([data-view="overview"]) .nav-icon { color: #5b9f82 !important; }
+body:not([data-view="overview"]) .rail-separator { background: #e5ebe7 !important; }
+body:not([data-view="overview"]) .rail-sessions-head strong { color: #60726a !important; }
+body:not([data-view="overview"]) .tiny-btn {
+  background: white !important;
+  border-color: #d9e3dd !important;
+  color: #35554a !important;
+}
+body:not([data-view="overview"]) .mini-session {
+  background: white !important;
+  border-color: #e2e8e4 !important;
+  color: #40544c !important;
+}
+body:not([data-view="overview"]) .mini-session:hover,
+body:not([data-view="overview"]) .mini-session.active {
+  background: #edf5f1 !important;
+  border-color: #a8ccb9 !important;
+}
+body:not([data-view="overview"]) .mini-meta { color: #819087 !important; }
+body:not([data-view="overview"]) .rail-foot {
+  border-top-color: #e2e8e4 !important;
+  color: #87948e !important;
+}
+body:not([data-view="overview"]) .main { background: #f4f6f3 !important; }
+body:not([data-view="overview"]) .topbar {
+  background: rgba(255, 255, 255, .96) !important;
+  border-bottom-color: #e0e7e3 !important;
+  color: #233942 !important;
+  backdrop-filter: blur(10px);
+}
+body:not([data-view="overview"]) .page-sub { color: #7d8b85 !important; }
+body:not([data-view="overview"]) .system-pill {
+  background: #f8fbf9 !important;
+  border-color: #dce7e1 !important;
+  color: #64736c !important;
+}
+body:not([data-view="overview"]) .boundary {
+  background: #fffaf0 !important;
+  border-color: #eadcb7 !important;
+  color: #735d2f !important;
+  border-radius: 10px !important;
+}
+body:not([data-view="overview"]) .section-title h2 { color: #243b44 !important; }
+body:not([data-view="overview"]) .section-title p { color: #7b8984 !important; }
+body:not([data-view="overview"]) .scenario,
+body:not([data-view="overview"]) .architecture,
+body:not([data-view="overview"]) .panel,
+body:not([data-view="overview"]) .lifecycle,
+body:not([data-view="overview"]) .queue-card,
+body:not([data-view="overview"]) .queue-side,
+body:not([data-view="overview"]) .quality-card,
+body:not([data-view="overview"]) .ops-card,
+body:not([data-view="overview"]) .stat,
+body:not([data-view="overview"]) .feature-card {
+  background: white !important;
+  border-color: #dde6e1 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 7px 20px rgba(50, 70, 60, .04) !important;
+  color: #263c45 !important;
+}
+body:not([data-view="overview"]) .scenario span,
+body:not([data-view="overview"]) .feature-card p,
+body:not([data-view="overview"]) .quality-top p,
+body:not([data-view="overview"]) .queue-card p,
+body:not([data-view="overview"]) .queue-side p { color: #7b8984 !important; }
+body:not([data-view="overview"]) .panel-head {
+  background: #fbfcfb !important;
+  border-bottom-color: #e1e8e4 !important;
+}
+body:not([data-view="overview"]) .transcript { background: #fcfdfc !important; }
+body:not([data-view="overview"]) .turn { border-bottom-color: #e8eeea !important; }
+body:not([data-view="overview"]) .utterance { color: #364b53 !important; }
+body:not([data-view="overview"]) .capture-bar,
+body:not([data-view="overview"]) .audit {
+  background: #fafcfa !important;
+  border-color: #e2e9e5 !important;
+}
+body:not([data-view="overview"]) .audit-row code { color: #465d55 !important; }
+body:not([data-view="overview"]) .draft-box { border-color: #dfe7e3 !important; }
+body:not([data-view="overview"]) .draft-label {
+  background: #fafcfa !important;
+  border-bottom-color: #e1e8e4 !important;
+}
+body:not([data-view="overview"]) .draft textarea {
+  background: white !important;
+  color: #344a52 !important;
+}
+body:not([data-view="overview"]) .blocked {
+  background: #fff8f7 !important;
+  border-color: #e7c9c6 !important;
+  color: #935a57 !important;
+}
+body:not([data-view="overview"]) .review-alert {
+  background: #fff8e8 !important;
+  border-color: #ead4a4 !important;
+  color: #7a5a20 !important;
+}
+body:not([data-view="overview"]) .btn { border-radius: 8px !important; }
+body:not([data-view="overview"]) .btn.primary {
+  background: #3f9471 !important;
+  color: white !important;
+}
+body:not([data-view="overview"]) .btn.secondary,
+body:not([data-view="overview"]) .btn.white {
+  background: white !important;
+  color: #395149 !important;
+  border-color: #d9e3dd !important;
+}
+body:not([data-view="overview"]) .btn.soft {
+  background: #edf5f1 !important;
+  color: #34735a !important;
+  border-color: #cfe1d8 !important;
+}
+body:not([data-view="overview"]) .btn.danger {
+  background: white !important;
+  color: #aa5b59 !important;
+  border-color: #e7cac8 !important;
+}
+body:not([data-view="overview"]) .signal,
+body:not([data-view="overview"]) .qm {
+  background: #f8faf8 !important;
+  border-color: #e0e7e3 !important;
+}
+body:not([data-view="overview"]) .quality-boundary {
+  background: #fbfcfb !important;
+  border-color: #d7e1db !important;
+  color: #74837c !important;
+}
+body:not([data-view="overview"]) .arch-node {
+  background: #fbfcfb !important;
+  border-color: #dce5e0 !important;
+}
+.workspace-start {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  justify-content: space-between;
+  background: #eef6f1;
+  border: 1px solid #cfe3d8;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+.workspace-start strong {
+  display: block;
+  font-size: 12px;
+  color: #27483b;
+}
+.workspace-start span {
+  display: block;
+  margin-top: 4px;
+  font-size: 9px;
+  line-height: 1.55;
+  color: #6d8077;
+}
+.workspace-start .btn {
+  white-space: nowrap;
+  min-width: 108px;
+}
+body[data-view="overview"] [data-intro="features"] {
+  height: auto !important;
+  padding: 5px 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-bottom: 1px solid #335f62 !important;
+  border-radius: 0 !important;
+  color: #335f62 !important;
+}
+body[data-view="overview"] [data-intro="features"]::after {
+  content: "서비스 소개 보기";
+  font-size: 12px;
+}
+body[data-view="overview"] .feature-card:nth-child(1) h3::after {
+  content: "상담 내용 기록";
+}
+body[data-view="overview"] .feature-card:nth-child(2) h3::after {
+  content: "근거 연결 요약";
+}
+body[data-view="overview"] .feature-card:nth-child(3) h3::after {
+  content: "검토 필요 신호";
+}
+body[data-view="overview"] .feature-card:nth-child(4) h3::after {
+  content: "원문 수명주기";
+}
+body[data-view="overview"] .feature-card:nth-child(1) p::after {
+  content: "상담 발화를 순서대로 받아 기록합니다.";
+}
+body[data-view="overview"] .feature-card:nth-child(2) p::after {
+  content: "요약 문장을 원문 발화와 연결합니다.";
+}
+body[data-view="overview"] .feature-card:nth-child(3) p::after {
+  content: "누락·안전 신호는 자동 확정하지 않습니다.";
+}
+body[data-view="overview"] .feature-card:nth-child(4) p::after {
+  content: "완료·승인 후 전사 원문을 삭제합니다.";
+}
