@@ -11,16 +11,26 @@ CareFlow는 공개 채용 요구와 공개 제품 원칙을 참고해 **독립�
 
 브라우저 데모는 단순 결과 화면이 아니라 백엔드 상태 변화를 그대로 드러내는 제품 콘솔입니다.
 
-- **Overview** — 서비스가 해결하는 문제, 실시간 흐름, 현재 세션·검토·삭제 상태
-- **Live Session** — 정상/근거 부족/Safety signal/Sequence gap/중복 재전송 시나리오
-- **Review Queue** — 자동 확정하지 못한 세션과 사람 검토 사유
-- **AI Quality** — RAG, SFT, DPO, LLM-as-a-Judge, Multimodal 실험 결과와 채택 결정
-- **Operations** — 실제 실행 중인 DB/transcript store/generator 상태와 readiness
+- **홈** — 서비스 목적, 원문 수명주기, 근거 연결·사람 검토 원칙을 첫 화면에서 설명
+- **상담 기록** — 정상/근거 부족/Safety signal/Sequence gap/중복 재전송 시나리오와 실시간 세션
+- **검토 대기** — 자동 확정하지 못한 세션, 사람 검토 사유, 승인 전 원문 보존 상태
+- **검증 결과** — RAG, SFT, DPO, LLM-as-a-Judge, Multimodal 실험의 채택·미채택 판단
+- **시스템 상태** — 현재 공개 인스턴스의 DB/transcript store/generator/readiness
 - **Data lifecycle** — `CREATED → CAPTURED → DRAFT → REVIEW → PURGED`
-- **Evidence flow** — `발화 수집 → Evidence map → S/O/P → Review / Purge`
-- **자동 시연** — `전체 흐름 자동 시연`으로 합성 정상 상담을 한 번에 실행
+- **Evidence flow** — `발화 수집 → 근거 연결 → 기록 초안 → 검토 / 삭제`
 
-공개 데모의 화면은 provider-neutral하게 렌더링합니다. 모델/provider 이름 대신 제품 동작·근거·검토 상태를 보여줍니다.
+`상담 시작하기`는 비어 있는 상담 화면만 엽니다. 이 시점에는 세션이나 전사 원문을 자동 생성하지 않습니다. 사용자가 시나리오를 명시적으로 선택하면 새 세션을 만들고 같은 WebSocket·상태 머신 계약을 실행합니다.
+
+빠르게 확인하려면 아래 순서로 보면 됩니다.
+
+1. 홈에서 `상담 시작하기` → 비어 있는 상담 기록 화면 확인
+2. `정상 상담` → 4개 발화 수신 → `초안 생성` → S/O/P 근거 `3/3` → 원문 `삭제 완료`
+3. `Safety signal` → `초안 생성` → `검토 필요` + 원문 `TTL 보존`
+4. `검토 대기`에서 pending 세션 확인 → 승인 뒤 원문 purge
+5. `검증 결과`에서 기준 모델 `0.0648` → SFT `0.1244 채택` → DPO `0.1093 미채택` 확인
+6. `시스템 상태`에서 공개 데모가 실제로 `SQLite + memory`로 실행되는지 확인
+
+공개 데모의 제품 UI는 provider-neutral하게 렌더링합니다. 모델/provider 이름 대신 제품 동작·근거·검토 상태를 보여줍니다.
 
 ## 2. 제품 경로
 
@@ -64,15 +74,15 @@ contract / evidence / safety gate
 | S/O/P generator | deterministic synthetic demo | structured LLM adapter |
 | 음성 | 공개 데모에서 비활성 | optional faster-whisper binary WebSocket path |
 | 목적 | 누구나 재현 가능한 합성 시연 | 실제 서비스 구성의 계약·통합 검증 |
-| 검증 | live deployment smoke | GitHub Actions integration CI |
+| 검증 | live deployment smoke + browser capture | GitHub Actions integration CI |
 
-공개 데모를 PostgreSQL/Redis/외부 LLM을 쓰는 것처럼 보이게 만들지 않습니다. `/v1/operations`가 현재 인스턴스의 실제 backend를 그대로 반환합니다. PostgreSQL 16 + Redis 7 경로는 CI에서 migration과 real-service integration test를 매 main/PR에 실행합니다.
+공개 데모를 PostgreSQL/Redis/외부 LLM을 쓰는 것처럼 보이게 만들지 않습니다. `/v1/operations`가 현재 인스턴스의 실제 backend를 그대로 반환합니다. PostgreSQL 16 + Redis 7 경로는 CI에서 migration과 real-service integration test를 매 PR/main에서 실행합니다.
 
 Render는 무료 portfolio demo 환경이라 SQLite 파일과 in-memory transcript는 영속 운영 저장소로 취급하지 않습니다. 재배포 시 상태가 초기화될 수 있습니다.
 
-## 4. 배포에서 실제로 잡은 결함
+## 4. 배포·검증에서 실제로 잡은 결함
 
-로컬 테스트가 아니라 실제 Render 배포까지 연결하면서 두 가지 회귀를 잡아 저장소 테스트로 고정했습니다.
+로컬 테스트가 아니라 실제 Render 배포와 브라우저 검증까지 연결하면서 회귀를 발견했고 저장소 계약으로 고정했습니다.
 
 ### 4.1 기본 설치가 기동하지 않던 packaging 결함
 
@@ -96,27 +106,51 @@ Render는 무료 portfolio demo 환경이라 SQLite 파일과 in-memory transcri
 - `tests/test_deterministic_generator.py`에서 실제 데모 문장으로 `S:[1,2], O:[3], P:[4]`를 고정
 - live Render smoke에서도 동일 evidence map을 검증
 
+### 4.3 배포 교체 순간의 verification race
+
+GitHub Actions가 새 commit을 push한 직후 이전 Render release를 먼저 읽고 WebSocket 검증을 시작하면, 인스턴스 교체 중 연결이 끊길 수 있었습니다.
+
+수정:
+
+- `/v1/release`에서 현재 Render가 서빙 중인 Git commit을 노출
+- `scripts/wait_for_render_release.py`가 **triggering SHA와 정확히 일치하고 readiness가 통과할 때까지** 대기
+- 같은 release가 확인된 뒤에만 live smoke와 browser capture 시작
+
+### 4.4 검증 코드가 공개 runtime보다 강한 구성을 잘못 요구하던 문제
+
+초기 검증 스크립트는 공개 무료 데모까지 PostgreSQL + Redis를 써야 한다고 가정했습니다. 이는 실제 배포 계약과 달랐습니다.
+
+수정:
+
+- public Render 계약은 `SQLite + memory + deterministic + speech disabled`로 명시
+- PostgreSQL 16 + Redis 7은 CI real-service integration으로 별도 증명
+- `tests/test_live_gate_contract.py`로 두 검증 경계를 고정
+- 의도된 제품 문구와 provider 노출 검사를 분리
+
 ## 5. Live deployment gate
 
-`main`이 바뀔 때 `.github/workflows/deployment-smoke.yml`이 실제 `https://careflow-demo.onrender.com`을 대상으로 아래 계약을 검사합니다.
+`main`이 바뀌면 실제 `https://careflow-demo.onrender.com`을 대상으로 다음 순서로 검증합니다.
 
-1. `/health/ready`가 `ready`
-2. 실제 `/` HTML에 Overview / Live Session / Review Queue / AI Quality / Operations와 핵심 workflow landmark가 존재
-3. 렌더된 공개 UI에 provider 이름이 노출되지 않음
-4. `/v1/operations`가 SQLite + memory + deterministic demo라는 실제 환경을 보고
-5. `/v1/quality`가 저장된 RAG/SFT/DPO/Judge/Multimodal 결정과 정확히 일치
-6. synthetic session 생성 → 4개 chunk → finalize
-7. `READY`, `review_required=false`, `transcript_purged=true`
-8. evidence가 `Subjective [1,2] / Objective [3] / Plan [4]`
-9. purge 뒤 transcript unavailable/empty
-10. audit에 `session.finalized`, `transcript.purged`
+1. `/v1/release`의 commit이 workflow를 발생시킨 Git SHA와 정확히 일치
+2. `/health/ready`가 `ready`
+3. `/`에 홈 / 상담 기록 / 검토 대기 / 검증 결과 / 시스템 상태와 핵심 workflow landmark 존재
+4. 공개 UI에 provider 이름이나 이전 데모 문구가 노출되지 않음
+5. `/v1/operations`가 실제 공개 runtime인 `SQLite + memory + deterministic + speech disabled`를 보고
+6. `/v1/quality`가 저장된 RAG/SFT/DPO/Judge/Multimodal 결정과 정확히 일치
+7. 정상 synthetic session → `READY`, `review_required=false`, `transcript_purged=true`
+8. 정상 evidence가 `Subjective [1,2] / Objective [3] / Plan [4]`
+9. purge 뒤 transcript unavailable/empty + audit에 finalized/purged 이벤트
+10. Safety signal session → `REVIEW_REQUIRED` + 승인 전 transcript 유지
+11. 사람 승인 → review 해제 + transcript purge
 
-최종 main 기준:
+별도의 **Demo Capture** workflow는 실제 Chromium에서 홈 렌더링, 빈 상담 진입, 정상·Safety 경로, Review Queue, 검증 결과, 시스템 상태를 순서대로 실행합니다. 성공 시 다음 artifact를 남깁니다.
 
-- CI: run `33905418665` — **success**
-- Public Readiness: run `33905418706` — **success**
-- Deployment Smoke: run `33905418686` — **success**
-- Render deploy: commit `a2bebd1682d5504509dee900a11a0c85d7586064` — **live**
+- `careflow-live-demo.mp4`
+- `careflow-live-demo.webm`
+- `careflow-d-home.png`
+- `careflow-live-verification.json`
+
+이 artifact의 JSON은 정상 경로 `3/3`, normal purge, Safety review routing/TTL retention, Review Queue 노출, 모델 선택 지표, 실제 `SQLITE + MEMORY`, credential 미노출을 machine-readable 값으로 기록합니다.
 
 ## 6. AI Quality — 사용 여부보다 채택 기준
 
@@ -256,17 +290,22 @@ make ai-verify
 - lint / mypy / unit·contract / migration
 - PostgreSQL 16 + Redis 7 integration
 - Docker runtime image build
+- README 설치·기동 경로
 - AI lab smoke / retrieval / multimodal / evaluation / SFT·DPO dataset contract
 - Gitleaks full-history / tracked-sensitive-artifact guard
-- Render live product shell / runtime metadata / AI-quality decision / synthetic E2E / purge audit
+- exact Render release SHA / readiness
+- Render live product shell / runtime metadata / AI-quality decision
+- normal READY/purge + Safety review/approve/purge synthetic E2E
+- Chromium browser walkthrough + MP4/WebM/screenshot/verification JSON artifact
 
 ### 의도적으로 과장하지 않는 것
 
 - 실제 환자 데이터·의료진 평가·임상 정확도 검증 없음
 - 한국어 STT 수치는 깨끗한 합성 TTS 3건의 정규화 CER `1/70 = 1.43%`에 한정
 - 실제 마이크·억양·배경 소음 환경 검증은 별도 과제
-- AWS는 ECS/RDS/ElastiCache Terraform 시작점이며 실제 AWS 계정 배포 아님
+- AWS는 ECS/RDS/ElastiCache Terraform 시작점이며 실제 AWS 계정 배포·운영 경험이 아님
 - public demo의 SQLite/in-memory 경로를 production storage라고 주장하지 않음
+- 실제 production SQL workload 기반 query tuning/slow-query 최적화 증거 없음
 - 인증·다중 테넌시·KMS·DR·WebSocket drain/autoscaling은 production 전 추가 설계 필요
 
 좋아진 결과만 남기지 않습니다. **실험·배포에서 실패하거나 회귀한 결과도 원인과 수정·미채택 근거를 저장소에 남기는 것**을 프로젝트 원칙으로 둡니다.

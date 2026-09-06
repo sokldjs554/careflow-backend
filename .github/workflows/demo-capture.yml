@@ -29,7 +29,6 @@ jobs:
     timeout-minutes: 15
     env:
       BASE_URL: https://careflow-demo.onrender.com
-      EXPECTED_GIT_COMMIT: ${{ github.sha }}
       EXPECTED_DATABASE_BACKEND: sqlite
       EXPECTED_TRANSCRIPT_STORE_BACKEND: memory
       EXPECTED_ENVIRONMENT: render-demo
@@ -40,6 +39,8 @@ jobs:
         with:
           python-version: "3.12"
       - name: Wait for exact Render release
+        env:
+          EXPECTED_GIT_COMMIT: ${{ github.sha }}
         run: python scripts/wait_for_render_release.py
       - name: Install browser capture dependencies
         run: |
