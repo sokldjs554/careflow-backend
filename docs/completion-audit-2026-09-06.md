@@ -1,134 +1,182 @@
 # CareFlow completion audit — 2026-09-06
 
-This document records the completion boundary for the CareFlow project itself. It is not a clinical validation report and it is not a claim that the prototype is a medical device.
+This document records the completion boundary for the CareFlow project itself. It is not a clinical validation report, a medical-device claim, or a claim of production operation on AWS.
 
-## 1. Product experience
+## 1. Final product experience
 
-| Requirement | Final behavior | Verification |
+The final public product is organized around **Home / 상담 기록 / 검토 대기 / 검증 결과 / 시스템 상태**. Earlier internal V2/V3 labels are treated as implementation history rather than the final navigation.
+
+| Required behavior | Final behavior | Verification |
 | --- | --- | --- |
-| Home should explain the product immediately | Storytelling Home explains that CareFlow structures consultation records while keeping clinicians in the review loop | Browser contract + live capture |
-| `서비스 소개 보기` must not open the consultation workspace | The secondary CTA stays on Home and scrolls to the service-introduction section | Browser request/view-state assertion |
-| `상담 시작하기` must not create a session automatically | It opens the consultation workspace only; no `POST /v1/sessions` is allowed at entry | Browser network assertion |
-| Consultation entry must not prefill data | Transcript remains at `0 utterances` and draft remains `미생성` until an explicit action | Browser state assertion |
-| Workspace should not use the old dark console look | Consultation, review, quality and system-state views use the light product theme | Computed-style browser assertion |
-| Avoid overclaiming copy such as `정확한 전사` | Product copy uses `상담 내용 기록`, `근거 연결 요약`, `검토 필요 신호`, `원문 수명주기` | Rendered-shell regression gate |
-| Engineering should not be a technology laundry list | The quality view shows decision evidence and adoption/rejection outcomes; the system view shows functional boundaries rather than framework names | Browser text assertion + rendered-shell gate |
+| Opening the app should explain the product immediately | Home explains the consultation-record workflow before any session is created | Browser contract + live capture |
+| Service introduction should remain on Home | `서비스 소개 보기` scrolls to the service-introduction section instead of opening a session | Browser view-state assertion |
+| Consultation entry should be empty | `상담 시작하기` opens the workspace with `0 utterances` and no generated draft | Browser network + DOM assertion |
+| No silent record creation | Merely opening Home, service introduction, or consultation entry does not issue `POST /v1/sessions` | Browser request assertion |
+| Normal and failure scenarios should be visible | Normal, evidence-gap, safety-signal, sequence-gap and duplicate-input scenarios are available | Product UI contract |
+| Evidence should be inspectable | The flow explicitly shows utterance/evidence mapping into Subjective / Objective / Plan | Live E2E + browser capture |
+| Data lifecycle should be visible | The UI exposes capture → draft/review → purge state instead of hiding raw-transcript lifecycle | Product UI + audit events |
+| Evidence Coverage should be meaningful | Coverage is section-based across S/O/P rather than a misleading utterance ratio | Regression test |
+| Human Review must be independent | Review-required sessions remain pending until explicit human approval | Safety live E2E |
+| AI work should be supporting evidence, not the product headline | Quality view shows evaluated adoption/rejection decisions | Browser capture + `/v1/quality` |
+| Model selection should be obvious | Base `0.0648` → SFT `0.1244` adopted → DPO `0.1093` rejected | Persisted experiment evidence + UI |
+| Product UI should be provider-neutral | Public UI does not expose provider/vendor implementation names | Rendered-shell and browser credential/provider checks |
+| Assessment should not be generated | Assessment/diagnosis/treatment generation remains blocked from the S/O/P contract | Schema/UI contract |
 
-## 2. Consultation workflow
+The final product story is therefore: **상담 입력 → 근거 연결 → S/O/P 기록 초안 → 필요 시 사람 검토 → 원문 삭제**.
 
-The user-visible workflow is:
+## 2. Live consultation and review workflow
 
-`상담 입력 → 근거 연결 → S/O/P 기록 초안 → 필요 시 검토 → 원문 삭제`
+### Normal synthetic path
 
-The normal synthetic scenario must create exactly one explicit session, generate a grounded S/O/P draft, report all three required evidence sections as linked, and purge the raw transcript after the session reaches the ready path.
+The automated live path creates one explicit session, sends ordered WebSocket transcript chunks, finalizes the session, generates an evidence-linked S/O/P draft, reaches `READY`, and purges the raw transcript. The expected evidence mapping for the canonical demo is:
 
-The safety-signal scenario must create exactly one explicit session, route the session to review, keep the transcript only for the configured TTL while review is pending, expose an explicit approval action, and purge the transcript after approval.
+- Subjective: sequences `[1, 2]`
+- Objective: sequence `[3]`
+- Plan: sequence `[4]`
 
-The browser verification script observes `POST /v1/sessions` requests directly so simply opening Home, service introduction, or the consultation workspace cannot silently create records.
+After purge, the raw transcript is unavailable while lifecycle/audit evidence remains.
+
+### Human-review path
+
+The safety-signal path creates one explicit session, routes it to `REVIEW_REQUIRED`, retains the raw transcript only while review is pending, exposes the reason and review action, and purges the raw transcript after explicit approval. The Review Queue surfaces the pending session independently from the consultation workspace.
+
+### Realtime behavior
+
+Implemented WebSocket behavior includes text chunks, sequence ordering/deduplication, duplicate acknowledgements, optional binary speech input, finalize behavior, and no persistence of raw audio.
 
 ## 3. Backend completion boundary
 
-Implemented and tested backend behavior includes:
+Implemented and continuously tested behavior includes:
 
-- FastAPI REST API and WebSocket session input contract.
-- Session lifecycle and state validation.
+- FastAPI REST API, Pydantic contracts and OpenAPI.
+- Async SQLAlchemy persistence and Alembic migrations.
+- Session state machine: created / streaming / processing / ready / review-required / purged.
 - Idempotent session creation and conflict handling.
-- Sequence-aware transcript ingestion and duplicate acknowledgement.
-- Evidence-linked S/O/P draft contract.
-- Review-required routing for safety/evidence/sequence failures.
-- Transcript TTL semantics and purge-on-ready / purge-on-approval behavior.
-- Audit events that preserve lifecycle evidence without storing raw transcript text in the audit log.
-- PostgreSQL migrations and PostgreSQL integration tests.
-- Redis transcript-store integration tests.
-- Readiness/liveness and Prometheus metrics endpoints.
-- Docker image build and reproducible README install/boot path.
+- Sequence-aware transcript ingestion and duplicate handling.
+- Evidence-linked S/O/P generation contract.
+- Safety/evidence/sequence review routing.
+- Review save/approve and manual purge operations.
+- Transcript TTL and purge-on-ready / purge-on-approval behavior.
+- Audit events that do not store raw transcript text.
+- Liveness/readiness, request IDs, Prometheus metrics and operations metadata.
+- Docker runtime image build.
+- Reproducible README install/boot path.
+- Real PostgreSQL 16 migration/integration testing in CI.
+- Real Redis 7 transcript-store integration testing in CI.
 
-## 4. AI quality evidence
+## 4. Public demo runtime vs production-oriented integration path
 
-AI work is treated as an evaluated supporting subsystem rather than the product headline.
+The public Render demo intentionally uses a low-cost, truthful portfolio runtime:
 
-### Retrieval experiment
+| Layer | Public Render demo | Integration / production-oriented path |
+| --- | --- | --- |
+| Database | SQLite | PostgreSQL 16 |
+| Short-lived transcript store | in-memory | Redis 7 Hash + TTL |
+| Note generator | deterministic synthetic demo | structured provider adapter available |
+| Speech | disabled on the public instance | optional faster-whisper binary WebSocket path |
+| Purpose | reproducible public product demo | service-contract and infrastructure integration proof |
 
-A Qdrant-compatible retrieval path, hybrid retrieval, and reranking were implemented and benchmarked. The stronger-looking semantic/reranker configuration was not forced into the product path when it regressed the small synthetic regression set. The UI therefore presents the decision as a tested-but-not-adopted retrieval candidate rather than as a production claim.
+`/v1/operations` is expected to report the **actual public runtime** as `database_backend=sqlite`, `transcript_store_backend=memory`, `environment=render-demo`, with healthy readiness. PostgreSQL 16 + Redis 7 are proven separately by the CI integration job; the public demo must never pretend to use them.
 
-### SFT gate
+The Render workspace contains unused CareFlow Postgres/Key Value resources created during deployment exploration, but they are not wired into the public demo and are not evidence of production operation.
 
-The bounded SFT experiment improved reference-token F1 from `0.0648` to `0.1244`, a delta of `+0.0596`, with no unsafe-output or unsupported-number regression on the synthetic holdout. It passed the adoption gate.
+## 5. AI quality evidence and the old AI-gap checklist
 
-### DPO gate
+### RAG + Vector DB + reranker — implemented, evaluated, not forced into the product
 
-The bounded single-step DPO candidate produced reference-token F1 `0.1093`, below the adopted SFT result `0.1244`. It was rejected. The project intentionally preserves the better SFT candidate rather than forcing every technique to be adopted.
+A Qdrant-compatible retrieval path, hybrid retrieval and reranking were implemented. The full BGE-M3 + CrossEncoder candidate achieved Recall@5 `0.9375`, MRR `1.0000`, nDCG@5 `0.9416`; the smaller baseline hybrid smoke path achieved Recall@5 `1.0000`, MRR `1.0000`, nDCG@5 `0.9746` on the current synthetic regression set. Because the full semantic candidate regressed recall/nDCG, its status is **`verified_not_adopted`** rather than being forced into the product.
 
-### LLM-as-a-Judge and multimodal experiments
+### SFT — implemented and adopted
 
-Synthetic positive/negative generation cases are evaluated for groundedness and safety boundaries. A separate synthetic multimodal benchmark compares text-only, signal-only and fused baselines. These results are evidence of an evaluation workflow, not clinical performance.
+Resource-bounded LoRA SFT using `Qwen/Qwen2.5-0.5B-Instruct` improved reference-token F1 from `0.0648` to `0.1244` (`+0.0596`) with unsafe-output rate `0` and unsupported-number rate `0` on the synthetic holdout. Decision: **adopt**.
 
-## 5. Live deployment
+### DPO — implemented as a bounded alignment gate and rejected
 
-The public demo is deployed on Render in Singapore with auto-deploy from `main`.
+The bounded single-step DPO candidate produced F1 `0.1093`, below the adopted SFT result `0.1244`, with no safety regression. Decision: **reject; keep SFT**. This is explicitly not presented as comprehensive DPO training.
 
-Runtime completion requires the live system to report:
+### LLM-as-a-Judge — implemented
 
-- database ready: `true`
-- database backend: `postgresql`
-- transcript store ready: `true`
-- transcript store backend: `redis`
-- note generation mode used by the public deterministic demo: `deterministic`
+Synthetic positive and deliberately bad generations are compared on groundedness, completeness, safety and clarity. Positive groundedness/safety average `5.0/5.0`; deliberately bad cases score much lower. This demonstrates an evaluation mechanism, not clinician validation.
 
-The Render workspace also contains a PostgreSQL 16 instance and an ephemeral Redis-compatible Key Value store for CareFlow. Raw transcript storage is intentionally TTL-oriented and the Key Value persistence mode is off.
+### Multimodal experiment — implemented as a synthetic sanity check
 
-The UI must never display database or Redis connection URLs or credentials. The live browser verification explicitly fails if such URLs appear.
+Synthetic EMA/text fusion achieved ROC-AUC `0.7408`, F1 `0.6154`, Brier `0.2027`, outperforming the individual synthetic signal baselines in that experiment. It is not a clinical-performance claim.
+
+### STT — implementation complete, real-world validation remains outside the completion claim
+
+The optional faster-whisper path, binary WebSocket input and non-persistence of raw audio are implemented. Clean synthetic speech checks exist, but real microphone validation across Korean accent, background noise and device conditions remains a manual experience gap and is not marked as completed.
 
 ## 6. Automated completion gates
 
-A change is not considered complete until all applicable gates are green:
+A runtime-affecting product change is not considered complete until the applicable gates are green.
 
 1. **CI**
    - Ruff
    - mypy
    - unit/contract tests
-   - SQLite migration
-   - PostgreSQL 16 + Redis integration
-   - Docker build
+   - clean SQLite migration
+   - PostgreSQL 16 + Redis 7 integration
+   - Docker image build
    - README install and boot
-   - AI lab smoke/evaluation contracts
+   - AI lab smoke, retrieval, multimodal, evaluation and SFT/DPO dataset contracts
 
 2. **Public Readiness**
-   - secret/sensitive-artifact guards
-   - release metadata and repository hygiene checks
+   - Gitleaks full-history scan
+   - tracked sensitive-artifact guard
+   - release metadata / repository hygiene checks
 
 3. **Deployment Smoke**
-   - waits for the Render deployment to become ready
-   - validates current product copy rather than obsolete V2/V3 labels
-   - verifies PostgreSQL/Redis runtime backends
-   - verifies quality-gate decisions and exact key metrics
-   - executes a synthetic live session through finalize, evidence, purge and audit
+   - waits for the exact Render release SHA
+   - verifies readiness and current public product shell
+   - verifies the truthful SQLite + memory + deterministic runtime
+   - verifies stored RAG/SFT/DPO/Judge/Multimodal decisions
+   - runs a normal synthetic WebSocket/finalize/evidence/purge/audit path
+   - runs a safety review/approval/purge path
 
 4. **Demo Capture / Browser Verification**
-   - selected Home visual renders in the browser
-   - service introduction stays on Home
-   - consultation entry creates no session
-   - explicit scenario creates exactly one session
-   - normal flow purges transcript
-   - safety flow enters review and retains transcript until approval
-   - review queue surfaces pending work
-   - quality view contains decision evidence rather than a stack list
-   - live PostgreSQL/Redis layers are healthy
-   - no credential URL is visible
-   - records a browser video, Home screenshot and machine-readable verification JSON
+   - renders the selected Home product experience
+   - verifies service introduction stays on Home
+   - verifies consultation entry creates no session
+   - verifies explicit scenario creation only
+   - captures normal and human-review states
+   - verifies Review Queue, quality decisions and operations state
+   - rejects credential/provider leakage
+   - records MP4, WebM, Home screenshot and machine-readable verification JSON
 
-The Demo Capture workflow is triggered by changes to the served HTML, product transformation, UI theme files, capture script or workflow itself so a UI-only change cannot bypass visual regression verification.
+The browser artifact is generated from the live Render instance rather than a mocked local screenshot.
 
-## 7. Explicit boundaries that remain honest
+## 7. DoctorPresso backend-role fit audit
 
-These are not hidden as completed claims:
+This is a project-to-role evidence map, not a claim that every career requirement is solved by one repository.
 
-- All demo/evaluation data are synthetic or de-identified examples; there is no clinical validation.
-- Assessment/diagnosis/treatment generation is intentionally blocked from the S/O/P output contract.
-- AWS infrastructure is represented by Terraform/IaC design; this project does not claim that the AWS stack was actually deployed or operated in a paid AWS account.
-- The public Render demo is the actual deployed service used for end-to-end verification.
-- Speech/STT support exists behind the optional speech adapter and is covered by code/tests, but real-world microphone validation across noise/accent/device conditions is a separate manual validation task and is not presented as completed clinical-grade speech accuracy.
+| Criterion | CareFlow evidence | Status |
+| --- | --- | --- |
+| Python / HTTP / REST / Git | FastAPI API, contracts, GitHub PR/CI workflow | Strong |
+| FastAPI / ORM / PostgreSQL | FastAPI + async SQLAlchemy + Alembic + PostgreSQL 16 CI integration | Strong |
+| Redis / WebSocket | Redis 7 integration path + realtime WebSocket session workflow | Strong |
+| AI tools / AI-system development | RAG/reranker, SFT, DPO gate, LLM Judge, multimodal evaluation, structured generator adapter | Strong |
+| Planning → development → deployment | original product UX, backend lifecycle, automated tests, Render deployment, live browser verification | Strong |
+| Service operation evidence | live Render deployment, readiness/operations endpoint, deployment smoke and browser capture | Strong for portfolio deployment |
+| AWS operation | Terraform ECS/RDS/ElastiCache/ALB design exists, but no paid AWS account deployment/operation was performed | Remaining experience gap |
+| Production SQL tuning at real workload scale | schema/migration/integration are present, but no sustained production-load tuning evidence | Remaining experience gap |
+| Real noisy/accent microphone validation | speech adapter exists; broad real-device/noise validation not completed | Remaining validation gap |
+| Clinical validation | intentionally not claimed | Out of project scope |
 
-## 8. Completion definition
+The project therefore covers the backend/AI/realtime/deployment core of the target role strongly, while **actual AWS operations, production-scale SQL tuning, and broad real-world STT validation remain honest experience gaps**. Those gaps should not be rewritten as completed project features.
 
-CareFlow is considered project-complete when the current `main` commit is live on Render and CI, Public Readiness, Deployment Smoke, and Demo Capture all pass against that same product state. Any failure in those gates reopens the completion state until the failing behavior is corrected.
+## 8. Explicit boundaries
+
+- All demo/evaluation data are synthetic or de-identified examples.
+- No real patient-data or clinician-performance validation is claimed.
+- Assessment/diagnosis/treatment generation is intentionally blocked.
+- Public Render storage is SQLite + memory, not production storage.
+- PostgreSQL/Redis evidence comes from integration CI, not from pretending the public demo uses those services.
+- AWS is IaC/design only; no actual AWS deployment/operation claim is allowed.
+- Real-world noisy/accent STT validation remains separate.
+- The repository remains private; no license or public-visibility change is made without an explicit user decision.
+
+## 9. Completion definition
+
+CareFlow is **project-complete** when the current runtime product state is live on Render and the CI, Public Readiness, Deployment Smoke and Demo Capture gates are green for that state. Documentation-only corrections do not change the runtime feature boundary, but they must not contradict the verified runtime.
+
+If a later runtime-affecting change causes any completion gate to fail, the project returns to incomplete status until the regression is fixed and the live gates pass again.
