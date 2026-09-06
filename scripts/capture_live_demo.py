@@ -33,8 +33,8 @@ async def switch_view(page: Page, view: str) -> None:
     await hold(0.8)
 
 
-async def wait_for_d_home(page: Page) -> None:
-    """Assert the selected D home is what Chromium actually paints."""
+async def wait_for_d_home(page: Page) -> dict[str, object]:
+    """Assert the selected D home and its sharp hero asset are painted by Chromium."""
     await page.wait_for_function(
         """
         () => {
@@ -49,7 +49,9 @@ async def wait_for_d_home(page: Page) -> None:
           const titleStyle = getComputedStyle(heroTitle, '::after');
           const title = titleStyle.content || '';
           const copy = getComputedStyle(heroCopy, '::after').content || '';
-          const visualStyle = getComputedStyle(heroVisual, '::after');
+          const visualStyle = getComputedStyle(heroVisual);
+          const overlay = getComputedStyle(heroVisual, '::after').content || '';
+          const railLabel = getComputedStyle(rail, '::after').content || '';
           const navLabels = [...document.querySelectorAll('.nav button')].map(
             (node) => getComputedStyle(node, '::after').content || ''
           );
@@ -60,7 +62,13 @@ async def wait_for_d_home(page: Page) -> None:
             && copy.includes('더 깊은 대화에 집중할 수 있도록')
             && getComputedStyle(rail).display === 'flex'
             && getComputedStyle(topbar).display === 'none'
-            && (visualStyle.backgroundImage || '').includes('data:image/webp;base64')
+            && (visualStyle.backgroundImage || '').includes('images.unsplash.com')
+            && overlay.includes('Listen')
+            && overlay.includes('Understand')
+            && overlay.includes('Care')
+            && overlay.includes('Together')
+            && railLabel.includes('데모 환경')
+            && !railLabel.includes('김의사')
             && ['홈', '상담 기록', '검토 대기', '분석'].every(
               (label) => navLabels.some((value) => value.includes(label))
             );
@@ -68,24 +76,30 @@ async def wait_for_d_home(page: Page) -> None:
         """,
         timeout=20_000,
     )
-    asset_loaded = await page.evaluate(
+    asset = await page.evaluate(
         """
         async () => {
           const heroVisual = document.querySelector('.hero-flow');
-          if (!heroVisual) return false;
-          const background = getComputedStyle(heroVisual, '::after').backgroundImage || '';
+          if (!heroVisual) return {ok:false,width:0,height:0,src:''};
+          const background = getComputedStyle(heroVisual).backgroundImage || '';
           const match = background.match(/^url\\(["']?(.*?)["']?\\)$/);
-          if (!match) return false;
+          if (!match) return {ok:false,width:0,height:0,src:''};
           const image = new Image();
           return await new Promise((resolve) => {
-            image.onload = () => resolve(image.naturalWidth > 0 && image.naturalHeight > 0);
-            image.onerror = () => resolve(false);
+            image.onload = () => resolve({
+              ok:image.naturalWidth >= 1200 && image.naturalHeight > 0,
+              width:image.naturalWidth,
+              height:image.naturalHeight,
+              src:match[1]
+            });
+            image.onerror = () => resolve({ok:false,width:0,height:0,src:match[1]});
             image.src = match[1];
           });
         }
         """
     )
-    require(asset_loaded, "D hero visual did not decode in the browser")
+    require(bool(asset.get("ok")), "D hero visual did not decode at high resolution")
+    return asset
 
 
 async def wait_for_service_intro(page: Page) -> None:
@@ -216,9 +230,14 @@ async def capture() -> None:
         page.on("request", track_session_post)
         await page.goto(BASE_URL, wait_until="networkidle", timeout=60_000)
         await page.locator("#system-status").wait_for(state="attached")
-        await wait_for_d_home(page)
+        hero_asset = await wait_for_d_home(page)
         await page.screenshot(path=str(OUTPUT_DIR / "careflow-d-home.png"), full_page=False)
         verification["d_home_rendered"] = True
+        verification["hero_asset_decoded"] = True
+        verification["hero_asset_width"] = hero_asset["width"]
+        verification["hero_asset_height"] = hero_asset["height"]
+        verification["hero_asset_is_high_resolution"] = int(hero_asset["width"]) >= 1200
+        verification["hero_identity_is_neutral_demo_label"] = True
 
         # Home intro stays on Home, creates no data, and explains the product in depth.
         posts_before_intro = len(session_posts)
