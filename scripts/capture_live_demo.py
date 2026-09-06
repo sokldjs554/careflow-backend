@@ -149,9 +149,9 @@ async def wait_for_operations(page: Page) -> tuple[str, str, str]:
 
 
 async def capture() -> None:
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    await asyncio.to_thread(OUTPUT_DIR.mkdir, parents=True, exist_ok=True)
     raw_dir = OUTPUT_DIR / "raw"
-    raw_dir.mkdir(parents=True, exist_ok=True)
+    await asyncio.to_thread(raw_dir.mkdir, parents=True, exist_ok=True)
     verification: dict[str, object] = {
         "base_url": BASE_URL,
         "checked_at": datetime.now(UTC).isoformat(),
@@ -216,7 +216,10 @@ async def capture() -> None:
             "document.getElementById('transcript-count')?.textContent?.includes('4 utterances')",
             timeout=20_000,
         )
-        require(len(session_posts) == posts_before_normal + 1, "Normal scenario session count mismatch")
+        require(
+            len(session_posts) == posts_before_normal + 1,
+            "Normal scenario session count mismatch",
+        )
         await page.locator("#finalize").click()
         await wait_for_draft(page)
         await page.wait_for_function(
@@ -239,7 +242,10 @@ async def capture() -> None:
             "document.getElementById('transcript-count')?.textContent?.includes('3 utterances')",
             timeout=20_000,
         )
-        require(len(session_posts) == posts_before_safety + 1, "Safety scenario session count mismatch")
+        require(
+            len(session_posts) == posts_before_safety + 1,
+            "Safety scenario session count mismatch",
+        )
         await page.locator("#finalize").click()
         await wait_for_draft(page)
         await page.wait_for_function(
@@ -250,8 +256,14 @@ async def capture() -> None:
             "document.getElementById('signal-transcript')?.textContent?.trim() === 'TTL 보존'",
             timeout=20_000,
         )
-        require(await page.locator("#review-alert").is_visible(), "Safety review banner missing")
-        require(await page.locator("#approve-review").is_enabled(), "Safety review approval disabled")
+        require(
+            await page.locator("#review-alert").is_visible(),
+            "Safety review banner missing",
+        )
+        require(
+            await page.locator("#approve-review").is_enabled(),
+            "Safety review approval disabled",
+        )
         verification["safety_flow_routes_to_review"] = True
         verification["safety_flow_transcript_retained_until_approval"] = True
         await hold(5)
@@ -270,21 +282,41 @@ async def capture() -> None:
         await page.locator("#quality-grid").wait_for(state="visible")
         await page.get_by_text("검색 품질 비교", exact=True).wait_for(state="visible")
         quality_text = await page.locator("#view-quality").inner_text()
-        for token in ("0.0648", "0.1244", "0.1093", "개선안 · 채택", "추가 후보 · 미채택"):
+        selection_tokens = (
+            "0.0648",
+            "0.1244",
+            "0.1093",
+            "개선안 · 채택",
+            "추가 후보 · 미채택",
+        )
+        for token in selection_tokens:
             require(token in quality_text, f"Quality selection evidence missing: {token}")
-        stack_labels = ("FastAPI", "PostgreSQL", "Redis", "WebSocket", "Qdrant", "LangGraph", "PyTorch")
+        stack_labels = (
+            "FastAPI",
+            "PostgreSQL",
+            "Redis",
+            "WebSocket",
+            "Qdrant",
+            "LangGraph",
+            "PyTorch",
+        )
         leaked = [label for label in stack_labels if label in quality_text]
         require(not leaked, f"Quality view reads like a stack list: {leaked}")
         verification["quality_view_is_decision_focused"] = True
         verification["quality_selection_metrics"] = [0.0648, 0.1244, 0.1093]
         await hold(5)
 
-        # Public runtime is intentionally SQLite + memory; CI proves PostgreSQL + Redis separately.
+        # Public runtime is SQLite + memory; CI proves PostgreSQL + Redis separately.
         await switch_view(page, "operations")
-        database_backend, transcript_store_backend, environment_text = await wait_for_operations(page)
+        (
+            database_backend,
+            transcript_store_backend,
+            environment_text,
+        ) = await wait_for_operations(page)
         require(
             database_backend == EXPECTED_DATABASE_BACKEND,
-            f"Unexpected public database backend: {database_backend} != {EXPECTED_DATABASE_BACKEND}",
+            "Unexpected public database backend: "
+            f"{database_backend} != {EXPECTED_DATABASE_BACKEND}",
         )
         require(
             transcript_store_backend == EXPECTED_TRANSCRIPT_STORE_BACKEND,
@@ -316,9 +348,14 @@ async def capture() -> None:
         await context.close()
         await browser.close()
 
-    shutil.copy2(raw_path, OUTPUT_DIR / "careflow-live-demo.webm")
+    await asyncio.to_thread(
+        shutil.copy2,
+        raw_path,
+        OUTPUT_DIR / "careflow-live-demo.webm",
+    )
     verification["verified"] = True
-    (OUTPUT_DIR / "careflow-live-verification.json").write_text(
+    await asyncio.to_thread(
+        (OUTPUT_DIR / "careflow-live-verification.json").write_text,
         json.dumps(verification, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
