@@ -206,6 +206,26 @@ body[data-view="overview"] [data-intro="features"]::after {
   content: "서비스 소개 보기";
   font-size: 12px;
 }
+body[data-view="overview"] #service-intro-section {
+  display: flex !important;
+  position: absolute;
+  z-index: 10;
+  top: 445px;
+  left: 42px;
+  right: 42px;
+  margin: 0 !important;
+  align-items: center;
+  pointer-events: none;
+}
+body[data-view="overview"] #service-intro-section h2 {
+  margin: 0;
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: -.015em;
+  color: #61746f;
+  font-weight: 800;
+}
+body[data-view="overview"] #service-intro-section p { display: none !important; }
 body[data-view="overview"] .feature-card:nth-child(1) h3::after {
   content: "상담 내용 기록";
 }
@@ -229,4 +249,11 @@ body[data-view="overview"] .feature-card:nth-child(3) p::after {
 }
 body[data-view="overview"] .feature-card:nth-child(4) p::after {
   content: "완료·승인 후 전사 원문을 삭제합니다.";
+}
+@media (max-width: 760px) {
+  body[data-view="overview"] #service-intro-section {
+    position: static;
+    margin: 18px 18px 8px !important;
+    pointer-events: auto;
+  }
 }
