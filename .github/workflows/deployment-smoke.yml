@@ -16,7 +16,7 @@ concurrency:
 jobs:
   live-demo-smoke:
     name: Live Render demo contract
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 10
     env:
       BASE_URL: https://careflow-demo.onrender.com
