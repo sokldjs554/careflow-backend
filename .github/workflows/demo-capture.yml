@@ -37,12 +37,13 @@ jobs:
             -c:v libx264 -preset medium -crf 21 -pix_fmt yuv420p -movflags +faststart \
             -an artifacts/demo/careflow-live-demo.mp4
           ffprobe -v error -show_entries format=duration,size -of default=nw=1 artifacts/demo/careflow-live-demo.mp4
-      - name: Upload demo video
+      - name: Upload demo video and D home screenshot
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: careflow-live-demo
           path: |
             artifacts/demo/careflow-live-demo.mp4
             artifacts/demo/careflow-live-demo.webm
+            artifacts/demo/careflow-d-home.png
           if-no-files-found: error
           retention-days: 7
