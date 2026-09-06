@@ -143,18 +143,38 @@ def test_demo_polishes_entry_navigation_and_workspace_details(client: TestClient
         '$("guided-demo").addEventListener("click",()=>runScenario("normal",true))'
         not in response.text
     )
-    assert "workspace-detail-polish-v2" in response.text
-    assert "background: #f4f6f3 !important" in response.text
+    assert "workspace-detail-polish-v3" in response.text
+    assert "background:#f4f6f3!important" in response.text
+
+
+def test_service_intro_is_a_real_product_story_not_an_anchor(client: TestClient) -> None:
+    response = client.get("/")
+
+    assert response.status_code == 200
+    for copy in (
+        "상담에 집중하세요. 기록은 CareFlow가 연결합니다.",
+        "상담 중 기록 때문에 대화의 흐름을 끊지 않도록",
+        "상담 시작부터 검토·삭제까지 하나의 흐름으로",
+        "상담을 시작합니다",
+        "대화를 흐름대로 기록합니다",
+        "기록과 원문을 연결합니다",
+        "확인이 필요하면 사람이 검토합니다",
+        "원문 발화 ↔ 근거 번호 ↔ S/O/P 기록 초안",
+    ):
+        assert copy in response.text
+    assert "#service-intro-section{display:block!important" in response.text
+    assert "#service-intro-section p{display:block!important" in response.text
+    assert "#service-intro-section p { display: none" not in response.text
 
 
 def test_demo_uses_product_facing_feature_and_validation_copy(client: TestClient) -> None:
     response = client.get("/")
 
     assert response.status_code == 200
-    assert "상담 내용 기록" in response.text
-    assert "근거 연결 요약" in response.text
-    assert "검토 필요 신호" in response.text
-    assert "원문 수명주기" in response.text
+    assert "상담을 시작합니다" in response.text
+    assert "대화를 흐름대로 기록합니다" in response.text
+    assert "기록과 원문을 연결합니다" in response.text
+    assert "확인이 필요하면 사람이 검토합니다" in response.text
     assert ">검증 결과</button>" in response.text
     assert ">AI Quality</button>" not in response.text
     assert "기술 이름을 나열하기보다 실제 선택과 회귀 판단만 보여줍니다." in response.text
