@@ -92,6 +92,8 @@ body:not([data-view="overview"]) .arch-node{background:#fbfcfb!important;border-
 .workspace-start strong{display:block;font-size:12px;color:#27483b}
 .workspace-start span{display:block;margin-top:4px;font-size:9px;line-height:1.55;color:#6d8077}
 .workspace-start .btn{white-space:nowrap;min-width:108px}
+body[data-view="overview"] [data-intro="features"]{height:auto!important;padding:5px 0!important;background:transparent!important;border:0!important;border-bottom:1px solid #335f62!important;border-radius:0!important;color:#335f62!important}
+body[data-view="overview"] [data-intro="features"]::after{content:"서비스 소개 보기";font-size:12px}
 body[data-view="overview"] .feature-card:nth-child(1) h3::after{content:"상담 내용 기록"}
 body[data-view="overview"] .feature-card:nth-child(2) h3::after{content:"근거 연결 요약"}
 body[data-view="overview"] .feature-card:nth-child(3) h3::after{content:"검토 필요 신호"}
