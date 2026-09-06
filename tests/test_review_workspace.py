@@ -126,14 +126,34 @@ def test_demo_uses_product_copy_and_non_accuracy_evidence_status(
     assert "`${state.lastCoverage}%`" not in response.text
 
 
-def test_demo_separates_product_and_engineering_navigation(client: TestClient) -> None:
+def test_demo_polishes_entry_navigation_and_workspace_details(client: TestClient) -> None:
     response = client.get("/")
 
     assert response.status_code == 200
     assert '<body data-view="overview">' in response.text
-    assert ">Engineering</button>" in response.text
+    assert 'data-intro="features"' in response.text
+    assert 'id="service-intro-section"' in response.text
+    assert 'id="workspace-new-session"' in response.text
+    assert "화면을 여는 것만으로는 세션이나 기록이 생성되지 않습니다." in response.text
+    assert '$("guided-demo").addEventListener("click",()=>{switchView("console")' in response.text
+    assert '$("guided-demo").addEventListener("click",()=>runScenario("normal",true))' not in response.text
+    assert "workspace-detail-polish-v2" in response.text
+    assert "background:#f4f6f3!important" in response.text
+
+
+def test_demo_uses_product_facing_feature_and_validation_copy(client: TestClient) -> None:
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert "상담 내용 기록" in response.text
+    assert "근거 연결 요약" in response.text
+    assert "검토 필요 신호" in response.text
+    assert "원문 수명주기" in response.text
+    assert ">검증 결과</button>" in response.text
     assert ">AI Quality</button>" not in response.text
-    assert "Model Evaluation" in response.text
+    assert "기술 이름을 나열하기보다 실제 선택과 회귀 판단만 보여줍니다." in response.text
+    assert "검색 품질 비교" in response.text
+    assert "요약 품질 개선안" in response.text
     assert "selected D storytelling home" in response.text
     assert "누군가의 마음이 조금 더 가벼워집니다." in response.text
     assert "data:image/webp;base64" in response.text
