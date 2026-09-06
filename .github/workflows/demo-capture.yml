@@ -8,13 +8,21 @@ on:
     paths:
       - .github/workflows/demo-capture.yml
       - scripts/capture_live_demo.py
+      - app/main.py
+      - app/static/index.html
+      - app/static/theme.css
+      - app/static/detail-polish.css
 
 permissions:
   contents: read
 
+concurrency:
+  group: careflow-demo-capture-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   capture:
-    name: Capture 60-second live CareFlow walkthrough
+    name: Capture and verify live CareFlow walkthrough
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -29,7 +37,7 @@ jobs:
           python -m playwright install --with-deps chromium
           sudo apt-get update
           sudo apt-get install -y ffmpeg
-      - name: Capture live Render walkthrough
+      - name: Capture and verify live Render walkthrough
         run: python scripts/capture_live_demo.py
       - name: Convert WebM to MP4
         run: |
@@ -37,7 +45,7 @@ jobs:
             -c:v libx264 -preset medium -crf 21 -pix_fmt yuv420p -movflags +faststart \
             -an artifacts/demo/careflow-live-demo.mp4
           ffprobe -v error -show_entries format=duration,size -of default=nw=1 artifacts/demo/careflow-live-demo.mp4
-      - name: Upload demo video and D home screenshot
+      - name: Upload live verification artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: careflow-live-demo
@@ -45,5 +53,6 @@ jobs:
             artifacts/demo/careflow-live-demo.mp4
             artifacts/demo/careflow-live-demo.webm
             artifacts/demo/careflow-d-home.png
+            artifacts/demo/careflow-live-verification.json
           if-no-files-found: error
           retention-days: 7
