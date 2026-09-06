@@ -5,6 +5,12 @@
 
 **Live demo:** https://careflow-demo.onrender.com
 
+## 🎬 검증된 데모 영상
+
+[![CareFlow 데모 미리보기](https://raw.githubusercontent.com/sokldjs554/careflow-backend/demo-assets/demo/careflow-d-home.png)](https://raw.githubusercontent.com/sokldjs554/careflow-backend/demo-assets/demo/careflow-live-demo.mp4)
+
+**▶ [46초 데모 영상 보기](https://raw.githubusercontent.com/sokldjs554/careflow-backend/demo-assets/demo/careflow-live-demo.mp4)** · 실제 Chromium E2E가 통과한 합성 데이터 walkthrough입니다.
+
 CareFlow는 공개 채용 요구와 공개 제품 원칙을 참고해 **독립적으로 설계한 백엔드 프로젝트**입니다. 특정 회사의 비공개 구현을 추정하거나 복제하지 않았습니다. 합성·비식별 데이터만 사용하며 의료기기·진단·치료 서비스가 아닙니다.
 
 ## 1. 지금 무엇을 직접 볼 수 있나
