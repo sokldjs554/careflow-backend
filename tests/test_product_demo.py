@@ -6,15 +6,17 @@ def test_product_demo_exposes_visible_workflow_controls(client: TestClient) -> N
 
     assert response.status_code == 200
     html = response.text.lower()
-    assert "데모 체험하기" in response.text
-    assert "data-scenario=\"normal\"" in response.text
-    assert "data-scenario=\"safety_signal\"" in response.text
-    assert "data-scenario=\"duplicate\"" in response.text
-    assert "data lifecycle" in html
+    assert "상담 화면 열기" in response.text
+    assert "서비스 소개 보기" in response.text
+    assert 'data-intro="features"' in response.text
+    assert 'data-scenario="normal"' in response.text
+    assert 'data-scenario="safety_signal"' in response.text
+    assert 'data-scenario="duplicate"' in response.text
+    assert "데이터 보존 상태" in response.text
     assert "근거 연결 상태" in response.text
-    assert "review queue" in html
-    assert "engineering" in html
-    assert "assessment — blocked" in html
+    assert "검토 대기" in response.text
+    assert "검증 결과" in response.text
+    assert "assessment — 생성 차단" in html
     assert "합성·비식별 데이터" in response.text
     assert "claude" not in html
     assert "anthropic" not in html
@@ -36,27 +38,29 @@ def test_product_demo_shows_evidence_flow_and_section_coverage(client: TestClien
     assert response.status_code == 200
     html = response.text
     assert "01 · 발화 수집" in html
-    assert "02 · Evidence map" in html
-    assert "03 · S / O / P" in html
-    assert "04 · Review / Purge" in html
+    assert "02 · 근거 연결" in html
+    assert "03 · 기록 초안" in html
+    assert "04 · 검토 / 삭제" in html
     assert 'required=["subjective","objective","plan"]' in html
     assert "required.filter(section=>covered.has(section)).length}" in html
     assert "정확도 지표 아님" in html
     assert "`${state.lastCoverage}/3`" in html
 
 
-def test_product_demo_shows_post_training_selection_path(client: TestClient) -> None:
+def test_product_demo_shows_decision_focused_model_validation(client: TestClient) -> None:
     response = client.get("/")
 
     assert response.status_code == 200
-    assert "Model Evaluation" in response.text
-    assert "Post-training selection path" in response.text
-    assert "BASE" in response.text
-    assert "SFT · ADOPTED" in response.text
-    assert "DPO · REJECTED" in response.text
+    assert "검증 결과" in response.text
+    assert "모델 선택 기록" in response.text
+    assert "기준 모델" in response.text
+    assert "개선안 · 채택" in response.text
+    assert "추가 후보 · 미채택" in response.text
     assert "0.0648" in response.text
     assert "0.1244" in response.text
     assert "0.1093" in response.text
+    assert "검색 품질 비교" in response.text
+    assert "요약 품질 개선안" in response.text
 
 
 def test_quality_report_preserves_adopt_and_reject_decisions(client: TestClient) -> None:
