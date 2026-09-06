@@ -20,8 +20,11 @@ jobs:
     timeout-minutes: 10
     env:
       BASE_URL: https://careflow-demo.onrender.com
+      EXPECTED_GIT_COMMIT: ${{ github.sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Wait for exact Render release
+        run: python scripts/wait_for_render_release.py
       - name: Verify live UI, runtime contracts and synthetic E2E
         run: python scripts/deployment_smoke.py
       - name: Upload UI diagnostics on failure
