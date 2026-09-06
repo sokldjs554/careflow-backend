@@ -1,4 +1,4 @@
-"""Wait until Render serves the exact Git commit that triggered this workflow."""
+"""Wait until Render serves the exact Git commit and reports readiness."""
 
 import json
 import os
