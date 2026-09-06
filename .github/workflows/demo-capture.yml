@@ -12,6 +12,7 @@ on:
       - scripts/deployment_smoke.py
       - scripts/wait_for_render_release.py
       - pyproject.toml
+      - README.md
       - app/main.py
       - app/api/routes.py
       - app/static/index.html
@@ -19,7 +20,7 @@ on:
       - app/static/detail-polish.css
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: careflow-demo-capture-${{ github.ref }}
@@ -70,3 +71,29 @@ jobs:
             artifacts/demo/careflow-live-verification.json
           if-no-files-found: error
           retention-days: 7
+      - name: Publish stable demo assets
+        run: |
+          set -euo pipefail
+          publish_dir="$(mktemp -d)"
+          cp artifacts/demo/careflow-live-demo.mp4 "$publish_dir/"
+          cp artifacts/demo/careflow-d-home.png "$publish_dir/"
+          cp artifacts/demo/careflow-live-verification.json "$publish_dir/"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git ls-remote --exit-code --heads origin demo-assets >/dev/null 2>&1; then
+            git fetch origin demo-assets:demo-assets
+            git switch demo-assets
+          else
+            git switch --orphan demo-assets
+          fi
+
+          git rm -rf . >/dev/null 2>&1 || true
+          mkdir -p demo
+          cp "$publish_dir/careflow-live-demo.mp4" demo/
+          cp "$publish_dir/careflow-d-home.png" demo/
+          cp "$publish_dir/careflow-live-verification.json" demo/
+          git add demo
+          git commit -m "Update generated CareFlow demo assets" || true
+          git push --force origin demo-assets
