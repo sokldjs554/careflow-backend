@@ -27,9 +27,11 @@ async def wait_for_d_home(page: Page) -> None:
           const topbar = document.querySelector('.topbar');
           if (!heroTitle || !heroCopy || !heroVisual || !rail || !topbar) return false;
 
-          const title = getComputedStyle(heroTitle, '::after').content || '';
+          const titleStyle = getComputedStyle(heroTitle, '::after');
+          const title = titleStyle.content || '';
           const copy = getComputedStyle(heroCopy, '::after').content || '';
-          const background = getComputedStyle(heroVisual).backgroundImage || '';
+          const visualStyle = getComputedStyle(heroVisual, '::after');
+          const background = visualStyle.backgroundImage || '';
           const cardTitles = [...document.querySelectorAll('.feature-card h3')].map(
             (node) => getComputedStyle(node, '::after').content || ''
           );
@@ -39,11 +41,14 @@ async def wait_for_d_home(page: Page) -> None:
 
           return title.includes('오늘도')
             && title.includes('누군가의 마음이 조금 더 가벼워집니다.')
+            && titleStyle.fontSize === '32px'
+            && titleStyle.whiteSpace === 'pre'
             && copy.includes('의료진의 소중한 시간을 지켜주고')
             && copy.includes('더 깊은 대화에 집중할 수 있도록')
             && getComputedStyle(rail).display === 'flex'
             && getComputedStyle(topbar).display === 'none'
             && background.includes('data:image/webp;base64')
+            && visualStyle.opacity !== '0'
             && ['정확한 전사', '근거 기반 요약', '사람의 검토', '더 나은 변화'].every(
               (label) => cardTitles.some((value) => value.includes(label))
             )
@@ -54,6 +59,26 @@ async def wait_for_d_home(page: Page) -> None:
         """,
         timeout=20_000,
     )
+
+    asset_loaded = await page.evaluate(
+        """
+        async () => {
+          const heroVisual = document.querySelector('.hero-flow');
+          if (!heroVisual) return false;
+          const background = getComputedStyle(heroVisual, '::after').backgroundImage || '';
+          const match = background.match(/^url\\(["']?(.*?)["']?\\)$/);
+          if (!match) return false;
+          const image = new Image();
+          return await new Promise((resolve) => {
+            image.onload = () => resolve(image.naturalWidth > 0 && image.naturalHeight > 0);
+            image.onerror = () => resolve(false);
+            image.src = match[1];
+          });
+        }
+        """
+    )
+    if not asset_loaded:
+        raise RuntimeError("D hero room visual did not decode in the browser")
 
 
 async def wait_for_draft(page: Page) -> None:
@@ -104,8 +129,9 @@ async def capture() -> None:
         await page.goto(BASE_URL, wait_until="networkidle", timeout=60_000)
         await page.locator("#system-status").wait_for(state="attached")
 
-        # 1) Product overview: verify the exact selected D visual contract is live.
+        # 1) Product overview: verify and capture the selected D visual contract.
         await wait_for_d_home(page)
+        await page.screenshot(path=str(OUTPUT_DIR / "careflow-d-home.png"), full_page=False)
         await hold(7)
 
         # 2) Run the normal synthetic path through READY + purge and verify evidence-link status.
