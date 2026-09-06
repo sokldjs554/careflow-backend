@@ -1,6 +1,6 @@
 {
   "base_url": "https://careflow-demo.onrender.com",
-  "checked_at": "2026-09-06T23:19:36.306799+00:00",
+  "checked_at": "2026-09-06T23:23:30.358837+00:00",
   "expected_database_backend": "SQLITE",
   "expected_transcript_store_backend": "MEMORY",
   "expected_environment": "render-demo",
