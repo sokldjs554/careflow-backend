@@ -16,6 +16,7 @@ EXPECTED_TRANSCRIPT_STORE_BACKEND = os.environ.get(
 ).upper()
 EXPECTED_ENVIRONMENT = os.environ.get("EXPECTED_ENVIRONMENT", "render-demo")
 OUTPUT_DIR = Path("artifacts/demo")
+HERO_PHOTO_TOKEN = "photo-1713286663271-809d910c0c65"
 
 
 def require(condition: bool, message: str) -> None:
@@ -34,10 +35,10 @@ async def switch_view(page: Page, view: str) -> None:
 
 
 async def wait_for_d_home(page: Page) -> None:
-    """Assert the selected D home is what Chromium actually paints."""
+    """Assert the selected final D home is what Chromium actually paints."""
     await page.wait_for_function(
-        """
-        () => {
+        f"""
+        () => {{
           if (document.body.dataset.view !== 'overview') return false;
           const heroTitle = document.querySelector('.hero h1');
           const heroCopy = document.querySelector('.hero p');
@@ -46,13 +47,17 @@ async def wait_for_d_home(page: Page) -> None:
           const topbar = document.querySelector('.topbar');
           const intro = document.querySelector('[data-intro="features"]');
           if (!heroTitle || !heroCopy || !heroVisual || !rail || !topbar || !intro) return false;
+
           const titleStyle = getComputedStyle(heroTitle, '::after');
           const title = titleStyle.content || '';
           const copy = getComputedStyle(heroCopy, '::after').content || '';
-          const visualStyle = getComputedStyle(heroVisual, '::after');
+          const heroStyle = getComputedStyle(heroVisual);
+          const message = getComputedStyle(heroVisual, '::after').content || '';
+          const railBadge = getComputedStyle(rail, '::after').content || '';
           const navLabels = [...document.querySelectorAll('.nav button')].map(
             (node) => getComputedStyle(node, '::after').content || ''
           );
+
           return title.includes('오늘도')
             && title.includes('누군가의 마음이 조금 더 가벼워집니다.')
             && titleStyle.fontSize === '32px'
@@ -60,32 +65,38 @@ async def wait_for_d_home(page: Page) -> None:
             && copy.includes('더 깊은 대화에 집중할 수 있도록')
             && getComputedStyle(rail).display === 'flex'
             && getComputedStyle(topbar).display === 'none'
-            && (visualStyle.backgroundImage || '').includes('data:image/webp;base64')
+            && (heroStyle.backgroundImage || '').includes('{HERO_PHOTO_TOKEN}')
+            && message.includes('Listen')
+            && message.includes('Understand')
+            && message.includes('Care')
+            && message.includes('Together')
+            && railBadge.includes('데모 환경')
             && ['홈', '상담 기록', '검토 대기', '분석'].every(
               (label) => navLabels.some((value) => value.includes(label))
             );
-        }
+        }}
         """,
         timeout=20_000,
     )
+
     asset_loaded = await page.evaluate(
         """
         async () => {
           const heroVisual = document.querySelector('.hero-flow');
           if (!heroVisual) return false;
-          const background = getComputedStyle(heroVisual, '::after').backgroundImage || '';
-          const match = background.match(/^url\\(["']?(.*?)["']?\\)$/);
+          const background = getComputedStyle(heroVisual).backgroundImage || '';
+          const match = background.match(/^url\(["']?(.*?)["']?\)$/);
           if (!match) return false;
           const image = new Image();
           return await new Promise((resolve) => {
-            image.onload = () => resolve(image.naturalWidth > 0 && image.naturalHeight > 0);
+            image.onload = () => resolve(image.naturalWidth >= 1200 && image.naturalHeight > 0);
             image.onerror = () => resolve(false);
             image.src = match[1];
           });
         }
         """
     )
-    require(asset_loaded, "D hero visual did not decode in the browser")
+    require(asset_loaded, "Final D hero photo did not decode at high resolution")
 
 
 async def wait_for_service_intro(page: Page) -> None:
@@ -219,6 +230,9 @@ async def capture() -> None:
         await wait_for_d_home(page)
         await page.screenshot(path=str(OUTPUT_DIR / "careflow-d-home.png"), full_page=False)
         verification["d_home_rendered"] = True
+        verification["d_home_sharp_photo_loaded"] = True
+        verification["d_home_neutral_demo_identity"] = True
+        verification["d_home_message_overlay"] = True
 
         # Home intro stays on Home, creates no data, and explains the product in depth.
         posts_before_intro = len(session_posts)
@@ -299,14 +313,8 @@ async def capture() -> None:
             "document.getElementById('signal-transcript')?.textContent?.trim() === 'TTL 보존'",
             timeout=20_000,
         )
-        require(
-            await page.locator("#review-alert").is_visible(),
-            "Safety review banner missing",
-        )
-        require(
-            await page.locator("#approve-review").is_enabled(),
-            "Safety review approval disabled",
-        )
+        require(await page.locator("#review-alert").is_visible(), "Safety review banner missing")
+        require(await page.locator("#approve-review").is_enabled(), "Safety review approval disabled")
         verification["safety_flow_routes_to_review"] = True
         verification["safety_flow_transcript_retained_until_approval"] = True
         await hold(5)
@@ -351,15 +359,10 @@ async def capture() -> None:
 
         # Public runtime is SQLite + memory; CI proves PostgreSQL + Redis separately.
         await switch_view(page, "operations")
-        (
-            database_backend,
-            transcript_store_backend,
-            environment_text,
-        ) = await wait_for_operations(page)
+        database_backend, transcript_store_backend, environment_text = await wait_for_operations(page)
         require(
             database_backend == EXPECTED_DATABASE_BACKEND,
-            "Unexpected public database backend: "
-            f"{database_backend} != {EXPECTED_DATABASE_BACKEND}",
+            f"Unexpected public database backend: {database_backend} != {EXPECTED_DATABASE_BACKEND}",
         )
         require(
             transcript_store_backend == EXPECTED_TRANSCRIPT_STORE_BACKEND,
@@ -391,11 +394,7 @@ async def capture() -> None:
         await context.close()
         await browser.close()
 
-    await asyncio.to_thread(
-        shutil.copy2,
-        raw_path,
-        OUTPUT_DIR / "careflow-live-demo.webm",
-    )
+    await asyncio.to_thread(shutil.copy2, raw_path, OUTPUT_DIR / "careflow-live-demo.webm")
     verification["verified"] = True
     await asyncio.to_thread(
         (OUTPUT_DIR / "careflow-live-verification.json").write_text,
