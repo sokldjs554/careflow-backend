@@ -54,23 +54,40 @@ def product_shell_diagnostics(html: str) -> tuple[list[str], list[str]]:
     required = [
         "상담의 중요한 순간을,",
         "놓치지 않는 기록으로.",
-        "Live Session",
-        "Review Queue",
-        "Engineering",
-        "System",
+        "상담 시작하기",
+        "서비스 소개 보기",
+        'data-intro="features"',
+        "service-intro-section",
+        "상담 기록",
+        "검토 대기",
+        "검증 결과",
+        "시스템 상태",
         "근거 연결 상태",
         "정확도 지표 아님",
-        "Data lifecycle",
-        "Model Evaluation",
-        "Post-training selection path",
-        "데모 체험하기",
+        "데이터 보존 상태",
+        "상담 내용 기록",
+        "근거 연결 요약",
+        "검토 필요 신호",
+        "원문 수명주기",
+        "새 상담 시작",
         "발화 수집",
-        "Evidence map",
-        "Review / Purge",
+        "근거 연결",
+        "기록 초안",
+        "검토 / 삭제",
+        "모델 선택 기록",
     ]
     missing = [token for token in required if token not in html]
     lowered = html.lower()
     exposed = [token for token in ("claude", "anthropic") if token in lowered]
+    forbidden_copy = [
+        "정확한 전사",
+        "사람의 검토",
+        "데모 체험하기",
+        "Engineering</button>",
+        "Live Session</button>",
+        "AI Quality</button>",
+    ]
+    exposed.extend(token for token in forbidden_copy if token in html)
     return missing, exposed
 
 
@@ -83,7 +100,7 @@ def verify_product_shell_after_deploy_converges() -> None:
             missing, exposed = product_shell_diagnostics(html)
             diagnostics = {
                 "missing": missing,
-                "provider_names_exposed": exposed,
+                "forbidden_or_provider_copy": exposed,
                 "html_length": len(html),
                 "attempt": attempt,
             }
@@ -92,7 +109,7 @@ def verify_product_shell_after_deploy_converges() -> None:
             )
             if exposed:
                 raise AssertionError(
-                    f"provider-specific names leaked into rendered demo: {exposed}"
+                    f"forbidden/provider-specific copy leaked into rendered demo: {exposed}"
                 )
             if not missing:
                 print(f"product shell verified on attempt {attempt}")
@@ -112,9 +129,9 @@ def verify_operations_and_quality() -> None:
     operations = request_json("GET", "/v1/operations")
     expected_operations = {
         "database_ready": True,
-        "database_backend": "sqlite",
+        "database_backend": "postgresql",
         "transcript_store_ready": True,
-        "transcript_store_backend": "memory",
+        "transcript_store_backend": "redis",
         "note_generator_mode": "deterministic",
     }
     for key, expected in expected_operations.items():
