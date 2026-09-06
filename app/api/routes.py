@@ -1,3 +1,4 @@
+import os
 from typing import cast
 
 from fastapi import APIRouter, Header, Query, Request
@@ -68,6 +69,12 @@ async def get_operations(request: Request) -> OperationsResponse:
 @router.get("/quality", response_model=QualityReportResponse)
 async def get_quality_report() -> QualityReportResponse:
     return QualityReportResponse.model_validate(QUALITY_REPORT)
+
+
+@router.get("/release")
+async def get_release() -> dict[str, str]:
+    """Expose only the deploy commit so external gates can avoid auto-deploy races."""
+    return {"commit": os.environ.get("RENDER_GIT_COMMIT", "local")}
 
 
 @router.post("/sessions", response_model=SessionResponse, status_code=201)
