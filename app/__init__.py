@@ -47,6 +47,10 @@ def assert_public_demo_source_contract() -> None:
         "workflow evidence": "기록과 원문을 연결합니다",
         "workflow review": "확인이 필요하면 사람이 검토합니다",
         "product proof": "원문 발화 ↔ 근거 번호 ↔ S/O/P 기록 초안",
+        "sharp hero photo": "photo-1713286663271-809d910c0c65",
+        "hero message overlay": "Listen\\A Understand\\A Care\\A Together",
+        "neutral demo identity": "●  데모 환경",
+        "home focus polish": ".nav button:focus-visible",
     }
 
     missing: list[str] = []
