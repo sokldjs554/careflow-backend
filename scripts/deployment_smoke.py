@@ -47,10 +47,11 @@ def wait_for_ready() -> None:
                 raise RuntimeError(f"unexpected readiness payload: {ready}")
             if EXPECTED_GIT_COMMIT:
                 release = request_json("GET", "/v1/release")
-                if release.get("git_commit") != EXPECTED_GIT_COMMIT:
+                release_commit = release.get("commit") or release.get("git_commit")
+                if release_commit != EXPECTED_GIT_COMMIT:
                     raise RuntimeError(
                         "release mismatch: "
-                        f"{release.get('git_commit')!r} != {EXPECTED_GIT_COMMIT!r}"
+                        f"{release_commit!r} != {EXPECTED_GIT_COMMIT!r}"
                     )
             print(f"readiness and release verified on attempt {attempt}")
             return
