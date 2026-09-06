@@ -135,10 +135,16 @@ def test_demo_polishes_entry_navigation_and_workspace_details(client: TestClient
     assert 'id="service-intro-section"' in response.text
     assert 'id="workspace-new-session"' in response.text
     assert "화면을 여는 것만으로는 세션이나 기록이 생성되지 않습니다." in response.text
-    assert '$("guided-demo").addEventListener("click",()=>{switchView("console")' in response.text
-    assert '$("guided-demo").addEventListener("click",()=>runScenario("normal",true))' not in response.text
+    assert (
+        '$("guided-demo").addEventListener("click",()=>{switchView("console")'
+        in response.text
+    )
+    assert (
+        '$("guided-demo").addEventListener("click",()=>runScenario("normal",true))'
+        not in response.text
+    )
     assert "workspace-detail-polish-v2" in response.text
-    assert "background:#f4f6f3!important" in response.text
+    assert "background: #f4f6f3 !important" in response.text
 
 
 def test_demo_uses_product_facing_feature_and_validation_copy(client: TestClient) -> None:
