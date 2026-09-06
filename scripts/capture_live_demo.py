@@ -50,9 +50,6 @@ async def wait_for_d_home(page: Page) -> None:
           const title = titleStyle.content || '';
           const copy = getComputedStyle(heroCopy, '::after').content || '';
           const visualStyle = getComputedStyle(heroVisual, '::after');
-          const cardTitles = [...document.querySelectorAll('.feature-card h3')].map(
-            (node) => getComputedStyle(node, '::after').content || ''
-          );
           const navLabels = [...document.querySelectorAll('.nav button')].map(
             (node) => getComputedStyle(node, '::after').content || ''
           );
@@ -64,9 +61,6 @@ async def wait_for_d_home(page: Page) -> None:
             && getComputedStyle(rail).display === 'flex'
             && getComputedStyle(topbar).display === 'none'
             && (visualStyle.backgroundImage || '').includes('data:image/webp;base64')
-            && ['상담 내용 기록', '근거 연결 요약', '검토 필요 신호', '원문 수명주기'].every(
-              (label) => cardTitles.some((value) => value.includes(label))
-            )
             && ['홈', '상담 기록', '검토 대기', '분석'].every(
               (label) => navLabels.some((value) => value.includes(label))
             );
@@ -92,6 +86,49 @@ async def wait_for_d_home(page: Page) -> None:
         """
     )
     require(asset_loaded, "D hero visual did not decode in the browser")
+
+
+async def wait_for_service_intro(page: Page) -> None:
+    """Verify that '서비스 소개 보기' opens a real product story section."""
+    await page.wait_for_function(
+        """
+        () => {
+          if (document.body.dataset.view !== 'overview') return false;
+          const section = document.getElementById('service-intro-section');
+          const heading = section?.querySelector('h2');
+          const copy = section?.querySelector('p');
+          const grid = section?.nextElementSibling;
+          if (!section || !heading || !copy || !grid?.classList.contains('feature-grid')) return false;
+
+          const headingText = getComputedStyle(heading, '::after').content || '';
+          const bodyText = getComputedStyle(copy, '::after').content || '';
+          const cards = [...grid.querySelectorAll('.feature-card')];
+          const cardTitles = cards.map((card) => {
+            const title = card.querySelector('h3');
+            return title ? (getComputedStyle(title, '::after').content || '') : '';
+          });
+          const gridLead = getComputedStyle(grid, '::before').content || '';
+          const preview = getComputedStyle(grid, '::after').content || '';
+          const rect = section.getBoundingClientRect();
+
+          return getComputedStyle(section).display === 'block'
+            && getComputedStyle(copy).display === 'block'
+            && headingText.includes('상담에 집중하세요')
+            && headingText.includes('CareFlow가 연결합니다')
+            && bodyText.includes('대화의 흐름을 끊지 않도록')
+            && bodyText.includes('의료진의 검토로 넘깁니다')
+            && gridLead.includes('상담 시작부터 검토·삭제까지')
+            && preview.includes('원문 발화')
+            && preview.includes('S/O/P 기록 초안')
+            && ['상담을 시작합니다', '대화를 흐름대로 기록합니다', '기록과 원문을 연결합니다', '확인이 필요하면 사람이 검토합니다'].every(
+              (label) => cardTitles.some((value) => value.includes(label))
+            )
+            && rect.top < window.innerHeight
+            && rect.bottom > 0;
+        }
+        """,
+        timeout=20_000,
+    )
 
 
 async def wait_for_light_workspace(page: Page) -> None:
@@ -183,14 +220,20 @@ async def capture() -> None:
         await page.screenshot(path=str(OUTPUT_DIR / "careflow-d-home.png"), full_page=False)
         verification["d_home_rendered"] = True
 
-        # Home intro stays on Home and creates no data.
+        # Home intro stays on Home, creates no data, and explains the product in depth.
         posts_before_intro = len(session_posts)
         await page.locator('[data-intro="features"]').click()
-        await page.locator("#service-intro-section").wait_for(state="visible")
+        await wait_for_service_intro(page)
         require(len(session_posts) == posts_before_intro, "Service intro created a session")
+        await page.screenshot(
+            path=str(OUTPUT_DIR / "careflow-service-intro.png"), full_page=False
+        )
         verification["service_intro_stays_on_home"] = True
         verification["service_intro_creates_session"] = False
-        await hold(2)
+        verification["service_intro_has_problem_value_copy"] = True
+        verification["service_intro_has_four_step_workflow"] = True
+        verification["service_intro_has_product_preview_copy"] = True
+        await hold(4)
 
         # Opening the consultation workspace must still be an empty state.
         posts_before_entry = len(session_posts)
