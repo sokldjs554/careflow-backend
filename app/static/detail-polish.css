@@ -1,259 +1,92 @@
-/* workspace-detail-polish-v2 */
-body:not([data-view="overview"]) {
-  background: #f4f6f3 !important;
-  color: #21343d !important;
-}
-body:not([data-view="overview"]) .app {
-  grid-template-columns: 228px 1fr;
-  background: #f4f6f3 !important;
-}
-body:not([data-view="overview"]) .rail {
-  background: #fbfcf9 !important;
-  color: #29414a !important;
-  border-right: 1px solid #dfe7e2 !important;
-  padding: 20px 14px !important;
-}
-body:not([data-view="overview"]) .brand { color: #183946 !important; }
-body:not([data-view="overview"]) .brand-mark {
-  background: #e4f2ec !important;
-  border-color: #b8d8cc !important;
-  color: #2f946d !important;
-  border-radius: 8px !important;
-}
-body:not([data-view="overview"]) .rail-label { color: #879790 !important; }
-body:not([data-view="overview"]) .nav button {
-  color: #66766f !important;
-  border-radius: 8px !important;
-}
-body:not([data-view="overview"]) .nav button:hover {
-  background: #eef4f0 !important;
-  color: #29483f !important;
-}
-body:not([data-view="overview"]) .nav button.active {
-  background: #e6f1ec !important;
-  color: #245844 !important;
-  box-shadow: inset 3px 0 #4c9b79 !important;
-}
-body:not([data-view="overview"]) .nav-icon { color: #5b9f82 !important; }
-body:not([data-view="overview"]) .rail-separator { background: #e5ebe7 !important; }
-body:not([data-view="overview"]) .rail-sessions-head strong { color: #60726a !important; }
-body:not([data-view="overview"]) .tiny-btn {
-  background: white !important;
-  border-color: #d9e3dd !important;
-  color: #35554a !important;
-}
-body:not([data-view="overview"]) .mini-session {
-  background: white !important;
-  border-color: #e2e8e4 !important;
-  color: #40544c !important;
-}
-body:not([data-view="overview"]) .mini-session:hover,
-body:not([data-view="overview"]) .mini-session.active {
-  background: #edf5f1 !important;
-  border-color: #a8ccb9 !important;
-}
-body:not([data-view="overview"]) .mini-meta { color: #819087 !important; }
-body:not([data-view="overview"]) .rail-foot {
-  border-top-color: #e2e8e4 !important;
-  color: #87948e !important;
-}
-body:not([data-view="overview"]) .main { background: #f4f6f3 !important; }
-body:not([data-view="overview"]) .topbar {
-  background: rgba(255, 255, 255, .96) !important;
-  border-bottom-color: #e0e7e3 !important;
-  color: #233942 !important;
-  backdrop-filter: blur(10px);
-}
-body:not([data-view="overview"]) .page-sub { color: #7d8b85 !important; }
-body:not([data-view="overview"]) .system-pill {
-  background: #f8fbf9 !important;
-  border-color: #dce7e1 !important;
-  color: #64736c !important;
-}
-body:not([data-view="overview"]) .boundary {
-  background: #fffaf0 !important;
-  border-color: #eadcb7 !important;
-  color: #735d2f !important;
-  border-radius: 10px !important;
-}
-body:not([data-view="overview"]) .section-title h2 { color: #243b44 !important; }
-body:not([data-view="overview"]) .section-title p { color: #7b8984 !important; }
-body:not([data-view="overview"]) .scenario,
-body:not([data-view="overview"]) .architecture,
-body:not([data-view="overview"]) .panel,
-body:not([data-view="overview"]) .lifecycle,
-body:not([data-view="overview"]) .queue-card,
-body:not([data-view="overview"]) .queue-side,
-body:not([data-view="overview"]) .quality-card,
-body:not([data-view="overview"]) .ops-card,
-body:not([data-view="overview"]) .stat,
-body:not([data-view="overview"]) .feature-card {
-  background: white !important;
-  border-color: #dde6e1 !important;
-  border-radius: 12px !important;
-  box-shadow: 0 7px 20px rgba(50, 70, 60, .04) !important;
-  color: #263c45 !important;
-}
-body:not([data-view="overview"]) .scenario span,
-body:not([data-view="overview"]) .feature-card p,
-body:not([data-view="overview"]) .quality-top p,
-body:not([data-view="overview"]) .queue-card p,
-body:not([data-view="overview"]) .queue-side p { color: #7b8984 !important; }
-body:not([data-view="overview"]) .panel-head {
-  background: #fbfcfb !important;
-  border-bottom-color: #e1e8e4 !important;
-}
-body:not([data-view="overview"]) .transcript { background: #fcfdfc !important; }
-body:not([data-view="overview"]) .turn { border-bottom-color: #e8eeea !important; }
-body:not([data-view="overview"]) .utterance { color: #364b53 !important; }
-body:not([data-view="overview"]) .capture-bar,
-body:not([data-view="overview"]) .audit {
-  background: #fafcfa !important;
-  border-color: #e2e9e5 !important;
-}
-body:not([data-view="overview"]) .audit-row code { color: #465d55 !important; }
-body:not([data-view="overview"]) .draft-box { border-color: #dfe7e3 !important; }
-body:not([data-view="overview"]) .draft-label {
-  background: #fafcfa !important;
-  border-bottom-color: #e1e8e4 !important;
-}
-body:not([data-view="overview"]) .draft textarea {
-  background: white !important;
-  color: #344a52 !important;
-}
-body:not([data-view="overview"]) .blocked {
-  background: #fff8f7 !important;
-  border-color: #e7c9c6 !important;
-  color: #935a57 !important;
-}
-body:not([data-view="overview"]) .review-alert {
-  background: #fff8e8 !important;
-  border-color: #ead4a4 !important;
-  color: #7a5a20 !important;
-}
-body:not([data-view="overview"]) .btn { border-radius: 8px !important; }
-body:not([data-view="overview"]) .btn.primary {
-  background: #3f9471 !important;
-  color: white !important;
-}
-body:not([data-view="overview"]) .btn.secondary,
-body:not([data-view="overview"]) .btn.white {
-  background: white !important;
-  color: #395149 !important;
-  border-color: #d9e3dd !important;
-}
-body:not([data-view="overview"]) .btn.soft {
-  background: #edf5f1 !important;
-  color: #34735a !important;
-  border-color: #cfe1d8 !important;
-}
-body:not([data-view="overview"]) .btn.danger {
-  background: white !important;
-  color: #aa5b59 !important;
-  border-color: #e7cac8 !important;
-}
-body:not([data-view="overview"]) .signal,
-body:not([data-view="overview"]) .qm {
-  background: #f8faf8 !important;
-  border-color: #e0e7e3 !important;
-}
-body:not([data-view="overview"]) .quality-boundary {
-  background: #fbfcfb !important;
-  border-color: #d7e1db !important;
-  color: #74837c !important;
-}
-body:not([data-view="overview"]) .arch-node {
-  background: #fbfcfb !important;
-  border-color: #dce5e0 !important;
-}
-.workspace-start {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  justify-content: space-between;
-  background: #eef6f1;
-  border: 1px solid #cfe3d8;
-  border-radius: 12px;
-  padding: 14px 16px;
-  margin-bottom: 12px;
-}
-.workspace-start strong {
-  display: block;
-  font-size: 12px;
-  color: #27483b;
-}
-.workspace-start span {
-  display: block;
-  margin-top: 4px;
-  font-size: 9px;
-  line-height: 1.55;
-  color: #6d8077;
-}
-.workspace-start .btn {
-  white-space: nowrap;
-  min-width: 108px;
-}
-body[data-view="overview"] [data-intro="features"] {
-  height: auto !important;
-  padding: 5px 0 !important;
-  background: transparent !important;
-  border: 0 !important;
-  border-bottom: 1px solid #335f62 !important;
-  border-radius: 0 !important;
-  color: #335f62 !important;
-}
-body[data-view="overview"] [data-intro="features"]::after {
-  content: "서비스 소개 보기";
-  font-size: 12px;
-}
-body[data-view="overview"] #service-intro-section {
-  display: flex !important;
-  position: absolute;
-  z-index: 10;
-  top: 445px;
-  left: 42px;
-  right: 42px;
-  margin: 0 !important;
-  align-items: center;
-  pointer-events: none;
-}
-body[data-view="overview"] #service-intro-section h2 {
-  margin: 0;
-  font-size: 10px;
-  line-height: 1;
-  letter-spacing: -.015em;
-  color: #61746f;
-  font-weight: 800;
-}
-body[data-view="overview"] #service-intro-section p { display: none !important; }
-body[data-view="overview"] .feature-card:nth-child(1) h3::after {
-  content: "상담 내용 기록";
-}
-body[data-view="overview"] .feature-card:nth-child(2) h3::after {
-  content: "근거 연결 요약";
-}
-body[data-view="overview"] .feature-card:nth-child(3) h3::after {
-  content: "검토 필요 신호";
-}
-body[data-view="overview"] .feature-card:nth-child(4) h3::after {
-  content: "원문 수명주기";
-}
-body[data-view="overview"] .feature-card:nth-child(1) p::after {
-  content: "상담 발화를 순서대로 받아 기록합니다.";
-}
-body[data-view="overview"] .feature-card:nth-child(2) p::after {
-  content: "요약 문장을 원문 발화와 연결합니다.";
-}
-body[data-view="overview"] .feature-card:nth-child(3) p::after {
-  content: "누락·안전 신호는 자동 확정하지 않습니다.";
-}
-body[data-view="overview"] .feature-card:nth-child(4) p::after {
-  content: "완료·승인 후 전사 원문을 삭제합니다.";
-}
-@media (max-width: 760px) {
-  body[data-view="overview"] #service-intro-section {
-    position: static;
-    margin: 18px 18px 8px !important;
-    pointer-events: auto;
-  }
-}
+/* workspace-detail-polish-v3 · product story + light clinical workspace */
+body:not([data-view="overview"]){background:#f4f6f3!important;color:#21343d!important}
+body:not([data-view="overview"]) .app{grid-template-columns:228px 1fr;background:#f4f6f3!important}
+body:not([data-view="overview"]) .rail{background:#fbfcf9!important;color:#29414a!important;border-right:1px solid #dfe7e2!important;padding:20px 14px!important}
+body:not([data-view="overview"]) .brand{color:#183946!important}
+body:not([data-view="overview"]) .brand-mark{background:#e4f2ec!important;border-color:#b8d8cc!important;color:#2f946d!important;border-radius:8px!important}
+body:not([data-view="overview"]) .rail-label{color:#879790!important}
+body:not([data-view="overview"]) .nav button{color:#66766f!important;border-radius:8px!important}
+body:not([data-view="overview"]) .nav button:hover{background:#eef4f0!important;color:#29483f!important}
+body:not([data-view="overview"]) .nav button.active{background:#e6f1ec!important;color:#245844!important;box-shadow:inset 3px 0 #4c9b79!important}
+body:not([data-view="overview"]) .nav-icon{color:#5b9f82!important}
+body:not([data-view="overview"]) .rail-separator{background:#e5ebe7!important}
+body:not([data-view="overview"]) .rail-sessions-head strong{color:#60726a!important}
+body:not([data-view="overview"]) .tiny-btn{background:white!important;border-color:#d9e3dd!important;color:#35554a!important}
+body:not([data-view="overview"]) .mini-session{background:white!important;border-color:#e2e8e4!important;color:#40544c!important}
+body:not([data-view="overview"]) .mini-session:hover,body:not([data-view="overview"]) .mini-session.active{background:#edf5f1!important;border-color:#a8ccb9!important}
+body:not([data-view="overview"]) .mini-meta{color:#819087!important}
+body:not([data-view="overview"]) .rail-foot{border-top-color:#e2e8e4!important;color:#87948e!important}
+body:not([data-view="overview"]) .main{background:#f4f6f3!important}
+body:not([data-view="overview"]) .topbar{background:rgba(255,255,255,.96)!important;border-bottom-color:#e0e7e3!important;color:#233942!important;backdrop-filter:blur(10px)}
+body:not([data-view="overview"]) .page-sub{color:#7d8b85!important}
+body:not([data-view="overview"]) .system-pill{background:#f8fbf9!important;border-color:#dce7e1!important;color:#64736c!important}
+body:not([data-view="overview"]) .boundary{background:#fffaf0!important;border-color:#eadcb7!important;color:#735d2f!important;border-radius:10px!important}
+body:not([data-view="overview"]) .section-title h2{color:#243b44!important}
+body:not([data-view="overview"]) .section-title p{color:#7b8984!important}
+body:not([data-view="overview"]) .scenario,body:not([data-view="overview"]) .architecture,body:not([data-view="overview"]) .panel,body:not([data-view="overview"]) .lifecycle,body:not([data-view="overview"]) .queue-card,body:not([data-view="overview"]) .queue-side,body:not([data-view="overview"]) .quality-card,body:not([data-view="overview"]) .ops-card,body:not([data-view="overview"]) .stat,body:not([data-view="overview"]) .feature-card{background:white!important;border-color:#dde6e1!important;border-radius:12px!important;box-shadow:0 7px 20px rgba(50,70,60,.04)!important;color:#263c45!important}
+body:not([data-view="overview"]) .scenario span,body:not([data-view="overview"]) .feature-card p,body:not([data-view="overview"]) .quality-top p,body:not([data-view="overview"]) .queue-card p,body:not([data-view="overview"]) .queue-side p{color:#7b8984!important}
+body:not([data-view="overview"]) .panel-head{background:#fbfcfb!important;border-bottom-color:#e1e8e4!important}
+body:not([data-view="overview"]) .transcript{background:#fcfdfc!important}
+body:not([data-view="overview"]) .turn{border-bottom-color:#e8eeea!important}
+body:not([data-view="overview"]) .utterance{color:#364b53!important}
+body:not([data-view="overview"]) .capture-bar,body:not([data-view="overview"]) .audit{background:#fafcfa!important;border-color:#e2e9e5!important}
+body:not([data-view="overview"]) .audit-row code{color:#465d55!important}
+body:not([data-view="overview"]) .draft-box{border-color:#dfe7e3!important}
+body:not([data-view="overview"]) .draft-label{background:#fafcfa!important;border-bottom-color:#e1e8e4!important}
+body:not([data-view="overview"]) .draft textarea{background:white!important;color:#344a52!important}
+body:not([data-view="overview"]) .blocked{background:#fff8f7!important;border-color:#e7c9c6!important;color:#935a57!important}
+body:not([data-view="overview"]) .review-alert{background:#fff8e8!important;border-color:#ead4a4!important;color:#7a5a20!important}
+body:not([data-view="overview"]) .btn{border-radius:8px!important}
+body:not([data-view="overview"]) .btn.primary{background:#3f9471!important;color:white!important}
+body:not([data-view="overview"]) .btn.secondary,body:not([data-view="overview"]) .btn.white{background:white!important;color:#395149!important;border-color:#d9e3dd!important}
+body:not([data-view="overview"]) .btn.soft{background:#edf5f1!important;color:#34735a!important;border-color:#cfe1d8!important}
+body:not([data-view="overview"]) .btn.danger{background:white!important;color:#aa5b59!important;border-color:#e7cac8!important}
+body:not([data-view="overview"]) .signal,body:not([data-view="overview"]) .qm{background:#f8faf8!important;border-color:#e0e7e3!important}
+body:not([data-view="overview"]) .quality-boundary{background:#fbfcfb!important;border-color:#d7e1db!important;color:#74837c!important}
+body:not([data-view="overview"]) .arch-node{background:#fbfcfb!important;border-color:#dce5e0!important}
+.workspace-start{display:flex;align-items:center;gap:18px;justify-content:space-between;background:#eef6f1;border:1px solid #cfe3d8;border-radius:12px;padding:14px 16px;margin-bottom:12px}
+.workspace-start strong{display:block;font-size:12px;color:#27483b}.workspace-start span{display:block;margin-top:4px;font-size:9px;line-height:1.55;color:#6d8077}.workspace-start .btn{white-space:nowrap;min-width:108px}
+
+/* Home CTA: service intro is a real story section, not a hidden title anchor. */
+body[data-view="overview"] [data-intro="features"]{height:auto!important;padding:5px 0!important;background:transparent!important;border:0!important;border-bottom:1px solid #335f62!important;border-radius:0!important;color:#335f62!important}
+body[data-view="overview"] [data-intro="features"]::after{content:"서비스 소개 보기";font-size:12px}
+body[data-view="overview"] #service-intro-section{display:block!important;position:relative!important;z-index:9;top:auto!important;left:auto!important;right:auto!important;margin:0!important;padding:96px 52px 30px!important;background:#f8f4ed;pointer-events:auto!important;text-align:center;scroll-margin-top:24px}
+body[data-view="overview"] #service-intro-section::before{content:"HOW CAREFLOW WORKS";display:block;margin-bottom:14px;color:#3f8d70;font-size:10px;font-weight:900;letter-spacing:.16em}
+body[data-view="overview"] #service-intro-section h2{margin:0 auto!important;max-width:820px;font-size:0!important;line-height:1.3;color:#17384a!important;font-weight:850!important;letter-spacing:-.045em!important}
+body[data-view="overview"] #service-intro-section h2::after{content:"상담에 집중하세요. 기록은 CareFlow가 연결합니다.";display:block;font-size:30px;line-height:1.32}
+body[data-view="overview"] #service-intro-section p{display:block!important;max-width:760px;margin:18px auto 0!important;color:transparent!important;font-size:0!important;line-height:1.75!important}
+body[data-view="overview"] #service-intro-section p::after{content:"상담 중 기록 때문에 대화의 흐름을 끊지 않도록, 발화를 순서대로 받아 구조화하고 기록 문장을 원문 근거와 연결합니다. 누락되거나 안전 확인이 필요한 내용은 자동으로 확정하지 않고 의료진의 검토로 넘깁니다.";display:block;color:#687b83;font-size:13px;line-height:1.8}
+body[data-view="overview"] #service-intro-section::after{content:"대화를 기록하는 것보다, 기록을 다시 확인할 수 있게 만드는 데 초점을 맞췄습니다.";display:inline-block;margin-top:22px;padding:9px 14px;border:1px solid #d8e4dc;border-radius:999px;background:rgba(255,255,255,.72);color:#557169;font-size:10px;font-weight:750}
+
+body[data-view="overview"] #service-intro-section + .feature-grid{position:relative!important;z-index:9;display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:14px!important;margin:0!important;padding:24px 42px 38px!important;background:#f8f4ed!important}
+body[data-view="overview"] #service-intro-section + .feature-grid::before{content:"상담 시작부터 검토·삭제까지 하나의 흐름으로";grid-column:1/-1;display:block;margin:0 0 4px;color:#2d4750;font-size:12px;font-weight:900;letter-spacing:-.02em;text-align:left}
+body[data-view="overview"] #service-intro-section + .feature-grid::after{content:"실제 상담 화면에서는 원문 발화 ↔ 근거 번호 ↔ S/O/P 기록 초안을 같은 화면에서 확인할 수 있습니다.  ·  상담 시작하기 →";grid-column:1/-1;display:block;margin-top:8px;padding:22px 24px;border:1px solid #d7e4dc;border-radius:12px;background:linear-gradient(110deg,#edf6f1 0%,#f8fbf9 58%,#fffaf1 100%);color:#36584b;font-size:11px;font-weight:800;line-height:1.65;text-align:left;box-shadow:0 9px 24px rgba(65,82,72,.05)}
+body[data-view="overview"] #service-intro-section + .feature-grid .feature-card{min-height:154px!important;display:block!important;position:relative!important;margin:0!important;padding:23px 20px 20px!important;border:1px solid #dde5df!important;border-radius:12px!important;background:rgba(255,255,255,.94)!important;box-shadow:0 10px 25px rgba(64,75,66,.06)!important;text-align:left!important}
+body[data-view="overview"] #service-intro-section + .feature-grid .feature-card::before{display:block!important;width:auto!important;height:auto!important;margin:0 0 18px!important;background:transparent!important;border-radius:0!important;color:#3f9471!important;font-size:10px!important;font-weight:900!important;letter-spacing:.09em!important}
+body[data-view="overview"] #service-intro-section + .feature-grid .feature-card:nth-child(1)::before{content:"01 · START"!important}
+body[data-view="overview"] #service-intro-section + .feature-grid .feature-card:nth-child(2)::before{content:"02 · CAPTURE"!important}
+body[data-view="overview"] #service-intro-section + .feature-grid .feature-card:nth-child(3)::before{content:"03 · EVIDENCE"!important}
+body[data-view="overview"] #service-intro-section + .feature-grid .feature-card:nth-child(4)::before{content:"04 · REVIEW"!important}
+body[data-view="overview"] #service-intro-section + .feature-grid .feature-num{display:none!important}
+body[data-view="overview"] #service-intro-section + .feature-grid .feature-card h3{margin:0 0 9px!important;color:#273f49!important;font-size:0!important;line-height:1.35!important}
+body[data-view="overview"] #service-intro-section + .feature-grid .feature-card h3::after{font-size:14px!important;font-weight:900!important}
+body[data-view="overview"] #service-intro-section + .feature-grid .feature-card:nth-child(1) h3::after{content:"상담을 시작합니다"!important}
+body[data-view="overview"] #service-intro-section + .feature-grid .feature-card:nth-child(2) h3::after{content:"대화를 흐름대로 기록합니다"!important}
+body[data-view="overview"] #service-intro-section + .feature-grid .feature-card:nth-child(3) h3::after{content:"기록과 원문을 연결합니다"!important}
+body[data-view="overview"] #service-intro-section + .feature-grid .feature-card:nth-child(4) h3::after{content:"확인이 필요하면 사람이 검토합니다"!important}
+body[data-view="overview"] #service-intro-section + .feature-grid .feature-card p{margin:0!important;color:transparent!important;font-size:0!important;line-height:1.65!important}
+body[data-view="overview"] #service-intro-section + .feature-grid .feature-card p::after{display:block!important;color:#778983!important;font-size:10px!important;line-height:1.7!important}
+body[data-view="overview"] #service-intro-section + .feature-grid .feature-card:nth-child(1) p::after{content:"버튼을 눌러야 빈 상담 세션이 생성됩니다. 화면 진입만으로 예시 기록을 만들지 않습니다."!important}
+body[data-view="overview"] #service-intro-section + .feature-grid .feature-card:nth-child(2) p::after{content:"발화 순서와 화자를 보존하고 중복 전송은 한 번만 반영합니다."!important}
+body[data-view="overview"] #service-intro-section + .feature-grid .feature-card:nth-child(3) p::after{content:"S/O/P 기록 문장이 어떤 원문 발화에서 왔는지 근거 번호로 확인할 수 있습니다."!important}
+body[data-view="overview"] #service-intro-section + .feature-grid .feature-card:nth-child(4) p::after{content:"근거 누락·순서 누락·안전 신호는 자동 확정하지 않고, 승인 뒤 필요한 원문을 삭제합니다."!important}
+
+/* Keep dynamic product proof visible below the story instead of hiding it. */
+body[data-view="overview"] .stats{display:grid!important;grid-template-columns:repeat(4,1fr)!important;gap:10px!important;margin:0!important;padding:0 42px 74px!important;background:#f8f4ed!important}
+body[data-view="overview"] .stats .stat{border:1px solid #e0e6e1!important;border-radius:10px!important;background:rgba(255,255,255,.83)!important;box-shadow:none!important}
+body[data-view="overview"] .stats .stat-label{color:#7b8b85!important}
+body[data-view="overview"] .stats .stat-value{color:#27483b!important;font-size:17px!important}
+body[data-view="overview"] .stats .stat-sub{color:#85938d!important}
+
+@media(max-width:1050px){body[data-view="overview"] #service-intro-section + .feature-grid{grid-template-columns:repeat(2,1fr)!important}body[data-view="overview"] .stats{grid-template-columns:repeat(2,1fr)!important}}
+@media(max-width:760px){.workspace-start{align-items:flex-start;flex-direction:column}.workspace-start .btn{width:100%}body[data-view="overview"] #service-intro-section{padding:68px 22px 24px!important;text-align:left}body[data-view="overview"] #service-intro-section h2::after{font-size:25px}body[data-view="overview"] #service-intro-section p::after{font-size:12px}body[data-view="overview"] #service-intro-section::after{text-align:left;border-radius:10px}body[data-view="overview"] #service-intro-section + .feature-grid{grid-template-columns:1fr!important;padding:18px 18px 26px!important}body[data-view="overview"] .stats{grid-template-columns:1fr!important;padding:0 18px 48px!important}}
